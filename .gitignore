@@ -1,0 +1,40 @@
+egs/**/data/
+egs/**/exp/
+tools/kaldi
+tools/miniconda3.sh
+tools/miniconda3/
+tools/sctk
+tools/sctk-2.4.10-20151007-1312Z.tar.bz2
+tools/sctk-2.4.10/
+tools/env.sh
+.nfs*
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script fr
