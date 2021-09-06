@@ -95,7 +95,8 @@ def calc_diarization_error(pred, label, label_delay=0):
     res['speaker_falarm'] = torch.max((n_sys - n_ref), torch.zeros_like(n_ref)).sum()
     n_map = ((label == 1) & (decisions == 1)).sum(axis=-1)
     res['speaker_error'] = (torch.min(n_ref, n_sys) - n_map).sum()
-    res['correct'] = (label == decisions).sum() / label.shape[1]
+    # res['correct'] = (label == decisions).sum() / label.shape[1]
+    res['correct'] = np.true_divide((label == decisions).sum(), label.shape[1]) 
     res['diarization_error'] = (
         res['speaker_miss'] + res['speaker_falarm'] + res['speaker_error'])
     res['frames'] = len(label)

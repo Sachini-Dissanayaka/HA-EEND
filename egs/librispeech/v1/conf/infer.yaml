@@ -10,5 +10,5 @@ context_size: 7
 subsampling: 10
 chunk_size: 2000
 transformer_encoder_n_heads: 4
-transformer_encoder_n_layers: 2
+transformer_encoder_n_layers: 4
 gpu: 0

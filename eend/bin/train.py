@@ -59,5 +59,7 @@ args = parser.parse_args()
 if not os.path.exists(args.model_save_dir):
     os.makedirs(args.model_save_dir)
 
+print(args)
+
 from eend.pytorch_backend.train import train
 train(args)
