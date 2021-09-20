@@ -36,14 +36,24 @@ if [ $stage -le 0 ]; then
 #     mini_librispeech_url=http://www.openslr.org/resources/31
 #     mkdir -p data/local
     local/download_and_untar.sh data/local dev-clean
+    local/download_and_untar.sh data/local test-clean
     local/download_and_untar.sh data/local train-clean-100
+    local/download_and_untar.sh data/local train-clean-360
     if [ ! -f data/dev_clean/.done ]; then
         local/data_prep.sh data/local/LibriSpeech/dev-clean data/dev_clean || exit
         touch data/dev_clean/.done
     fi
+    if [ ! -f data/test_clean/.done ]; then
+        local/data_prep.sh data/local/LibriSpeech/test-clean data/test_clean || exit
+        touch data/test_clean/.done
+    fi
     if [ ! -f data/train_clean_100/.done ]; then    
         local/data_prep.sh data/local/LibriSpeech/train-clean-100 data/train_clean_100
         touch data/train_clean_100/.done
+    fi
+    if [ ! -f data/train_clean_360/.done ]; then    
+        local/data_prep.sh data/local/LibriSpeech/train-clean-360 data/train_clean_360
+        touch data/train_clean_360/.done
     fi
     if [ ! -d data/musan_bgnoise ]; then
         tar xzf musan_bgnoise.tar.gz
@@ -75,7 +85,7 @@ if [ $stage -le 1 ]; then
     fi
 
     for simu_opts_sil_scale in 2; do
-        for dset in train_clean_100 dev_clean; do
+        for dset in train_clean_360 train_clean_100 dev_clean test_clean; do
             n_mixtures=2000
             simuid=${dset}_ns${simu_opts_num_speaker}_beta${simu_opts_sil_scale}_${n_mixtures}
             # check if you have the simulation
