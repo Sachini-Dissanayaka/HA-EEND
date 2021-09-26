@@ -48,13 +48,24 @@ if [ $stage -le 0 ]; then
         touch data/test_clean/.done
     fi
     if [ ! -f data/train_clean_100/.done ]; then    
-        local/data_prep.sh data/local/LibriSpeech/train-clean-100 data/train_clean_100
+        local/data_prep.sh data/local/LibriSpeech/train-clean-100 data/train_clean_100 || exit
         touch data/train_clean_100/.done
     fi
     if [ ! -f data/train_clean_360/.done ]; then    
         local/data_prep.sh data/local/LibriSpeech/train-clean-360 data/train_clean_360
         touch data/train_clean_360/.done
     fi
+
+    # Prepare a collection of NIST SRE and SWB data. This will be used to train,
+    if ! validate_data_dir.sh --no-text --no-feats data/librispeech_comb; then
+        # local/make_sre.sh $data_root data
+  
+        # Combine librispeech data
+        utils/combine_data.sh data/librispeech_comb \
+            data/train_clean_100 \
+            data/train_clean_360
+    fi
+
     if [ ! -d data/musan_bgnoise ]; then
         tar xzf musan_bgnoise.tar.gz
     fi
@@ -85,8 +96,8 @@ if [ $stage -le 1 ]; then
     fi
 
     for simu_opts_sil_scale in 2; do
-        for dset in train_clean_360 train_clean_100 dev_clean test_clean; do
-            n_mixtures=2000
+        for dset in librispeech_comb dev_clean test_clean; do
+            n_mixtures=5000
             simuid=${dset}_ns${simu_opts_num_speaker}_beta${simu_opts_sil_scale}_${n_mixtures}
             # check if you have the simulation
             if ! validate_data_dir.sh --no-text --no-feats $simudir/data/$simuid; then

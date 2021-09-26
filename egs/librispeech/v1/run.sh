@@ -20,7 +20,7 @@ conf_dir=conf
 # model_dir=exp/diarize/model/$model_id
 model_dir=exp/diarize/model
 
-train_dir=data/simu/data/train_clean_100_ns2_beta2_2000
+train_dir=data/simu/data/librispeech_comb_ns2_beta2_2000
 dev_dir=data/simu/data/dev_clean_ns2_beta2_2000
 test_dir=data/simu/data/test_clean_ns2_beta2_2000
 train_conf=$conf_dir/train.yaml
@@ -31,7 +31,7 @@ infer_conf=$conf_dir/infer.yaml
 infer_out_dir=$exp_dir/infer/librispeech
 # test_dir=data/simu/data/swb_sre_cv_ns2_beta2_500
 test_model=$model_dir/avg.th
-infer_out_dir=$exp_dir/infer/simu
+# infer_out_dir=$exp_dir/infer/simu
 
 work=$infer_out_dir/librispeech/.work
 scoring_dir=$exp_dir/scoring/librispeech
