@@ -56,7 +56,7 @@ if [ $stage -le 0 ]; then
         touch data/train_clean_360/.done
     fi
 
-    # Prepare a collection of NIST SRE and SWB data. This will be used to train,
+    # Combine train_clean_100 and train_clean_360. This will be used to train,
     if ! validate_data_dir.sh --no-text --no-feats data/librispeech_comb; then
         # local/make_sre.sh $data_root data
   

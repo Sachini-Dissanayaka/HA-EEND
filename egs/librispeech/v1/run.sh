@@ -20,9 +20,9 @@ conf_dir=conf
 # model_dir=exp/diarize/model/$model_id
 model_dir=exp/diarize/model
 
-train_dir=data/simu/data/librispeech_comb_ns2_beta2_2000
-dev_dir=data/simu/data/dev_clean_ns2_beta2_2000
-test_dir=data/simu/data/test_clean_ns2_beta2_2000
+train_dir=data/simu/data/train_clean_100_ns2_beta2_2000
+dev_dir=data/simu/data/dev_clean_ns2_beta2_500
+test_dir=data/simu/data/test_clean_ns2_beta2_500
 train_conf=$conf_dir/train.yaml
 
 init_model=$model_dir/avg.th
@@ -53,17 +53,17 @@ if [ $stage -le 2 ]; then
 fi
 
 # Adapting
-# if [ $stage -le 3 ]; then
-#     echo "Start adapting"
-#     python eend/bin/train.py -c $adapt_conf $train_adapt_dir $dev_adapt_dir $model_adapt_dir --initmodel $init_model
-# fi
+if [ $stage -le 3 ]; then
+    echo "Start adapting"
+    python eend/bin/train.py -c $adapt_conf $train_adapt_dir $dev_adapt_dir $model_adapt_dir --initmodel $init_model
+fi
 
 # Model averaging
-# if [ $stage -le 3 ]; then
-#     echo "Start model averaging"
-#     ifiles=`eval echo $model_adapt_dir/transformer{91..100}.th`
-#     python eend/bin/model_averaging.py $test_model $ifiles
-# fi
+if [ $stage -le 3 ]; then
+    echo "Start model averaging"
+    ifiles=`eval echo $model_adapt_dir/transformer{91..100}.th`
+    python eend/bin/model_averaging.py $test_model $ifiles
+fi
 
 Inferring
 if [ $stage -le 3 ]; then
