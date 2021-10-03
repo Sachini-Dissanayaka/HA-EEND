@@ -6,6 +6,8 @@
 import numpy as np
 import librosa
 import scipy.signal
+from eend.pytorch_backend.convolution import Conv2dSubampling
+from eend.pytorch_backend.spec_augment import SpecAugment
 
 def get_input_dim(
         frame_size,
@@ -97,12 +99,21 @@ def transform(
         raise ValueError('Unknown transform_type: %s' % transform_type)
     return Y.astype(dtype)
 
+def specaug(Y):
+    spec_augment = SpecAugment(freq_mask_para=10)
+    feature = spec_augment(Y)
+    return feature
 
 def subsample(Y, T, subsampling=1):
     """ Frame subsampling
     """
     Y_ss = Y[::subsampling]
     T_ss = T[::subsampling]
+    return Y_ss, T_ss
+
+def convolution_subsample(Y,T):
+    conv_subsample = Conv2dSubampling(in_channels=1, out_channels=Y.shape[1])
+    Y_ss, T_ss = conv_subsample(Y, T)
     return Y_ss, T_ss
 
 

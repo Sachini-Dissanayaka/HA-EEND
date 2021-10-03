@@ -13,6 +13,8 @@ from torch.nn import TransformerEncoder, TransformerEncoderLayer
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim import Optimizer
 
+from eend.pytorch_backend.convolution import Conv2dSubampling
+
 
 class NoamScheduler(_LRScheduler):
     """
@@ -64,6 +66,7 @@ class TransformerModel(nn.Module):
         self.has_pos = has_pos
 
         self.src_mask = None
+        self.conv_subsampling = Conv2dSubampling(in_channels = 1, out_channels = in_size)
         self.encoder = nn.Linear(in_size, n_units)
         self.encoder_norm = nn.LayerNorm(n_units)
         if self.has_pos:
@@ -99,6 +102,9 @@ class TransformerModel(nn.Module):
         src = nn.utils.rnn.pad_sequence(src, padding_value=-1, batch_first=True)
 
         # src: (B, T, E)
+        print("before",src.size())
+        src, out_len = self.conv_subsampling(src,src.size())
+        print("after",src.size())
         src = self.encoder(src)
         src = self.encoder_norm(src)
         # src: (T, B, E)
