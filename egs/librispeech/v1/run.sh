@@ -41,15 +41,15 @@ stage=1
 # Training
 if [ $stage -le 1 ]; then
     echo "Start training"
-    python /home/yoshani/HA-EEND/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
+    python /home/sachini/HA-EEND/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
 fi
 
 # Model averaging
-# if [ $stage -le 2 ]; then
-#     echo "Start model averaging"
-#     ifiles=`eval echo $model_dir/transformer{91..100}.th`
-#     python /home/sys17/Documents/EEND/eend/bin/model_averaging.py $init_model $ifiles
-# fi
+if [ $stage -le 2 ]; then
+    echo "Start model averaging"
+    ifiles=`eval echo $model_dir/transformer{91..100}.th`
+    python /home/sachini/HA-EEND/eend/bin/model_averaging.py $init_model $ifiles
+fi
 
 # Adapting
 # if [ $stage -le 3 ]; then
@@ -67,7 +67,7 @@ fi
 # Inferring
 # if [ $stage -le 3 ]; then
 #     echo "Start inferring"
-#     python /home/sys17/Documents/EEND/eend/bin/infer.py -c $infer_conf $test_dir $test_model $infer_out_dir
+#     python /home/sachini/HA-EEND/eend/bin/infer.py -c $infer_conf $test_dir $test_model $infer_out_dir
 # fi
 
 # Scoring
@@ -78,7 +78,7 @@ fi
 # 	find $infer_out_dir -iname "*.h5" > $work/file_list
 # 	for med in 1 11; do
 # 	for th in 0.3 0.4 0.5 0.6 0.7; do
-# 	python /home/sys17/Documents/EEND/eend/bin/make_rttm.py --median=$med --threshold=$th \
+# 	python /home/sachini/HA-EEND/eend/bin/make_rttm.py --median=$med --threshold=$th \
 # 		--frame_shift=80 --subsampling=10 --sampling_rate=8000 \
 # 		$work/file_list $scoring_dir/hyp_${th}_$med.rttm
 # 	md-eval.pl -c 0.25 \
@@ -87,3 +87,8 @@ fi
 # 	done
 # 	done
 # fi
+
+# if [ $stage -le 5 ]; then
+#     best_score.sh $scoring_dir
+# fi
+echo "Finished !"
