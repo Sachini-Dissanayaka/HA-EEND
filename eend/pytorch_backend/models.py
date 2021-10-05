@@ -66,7 +66,7 @@ class TransformerModel(nn.Module):
         self.has_pos = has_pos
 
         self.src_mask = None
-        self.conv_subsampling = Conv2dSubampling(in_channels = 1, out_channels = in_size)
+        self.conv_subsampling = Conv2dSubampling(in_channels = 1, out_channels = 1)
         self.encoder = nn.Linear(in_size, n_units)
         self.encoder_norm = nn.LayerNorm(n_units)
         if self.has_pos:
@@ -103,7 +103,7 @@ class TransformerModel(nn.Module):
 
         # src: (B, T, E)
         print("before",src.size())
-        src, out_len = self.conv_subsampling(src,src.size())
+        src = self.conv_subsampling(src,src.size())
         print("after",src.size())
         src = self.encoder(src)
         src = self.encoder_norm(src)

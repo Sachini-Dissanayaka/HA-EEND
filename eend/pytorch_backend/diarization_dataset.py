@@ -91,19 +91,21 @@ class KaldiDiarizationDataset(torch.utils.data.Dataset):
         Y = feature.transform(Y, self.input_transform)
         # Y_spliced: (frame, num_ceps * (context_size * 2 + 1))
         Y_spliced = feature.splice(Y, self.context_size)
-        # print("Y_spliced",Y_spliced.shape)
+
         # Y_ss: (frame / subsampling, num_ceps * (context_size * 2 + 1))
         #Y_ss, T_ss = feature.subsample(Y_spliced, T, self.subsampling)
+        T_ss = feature.subsample(T, self.subsampling)
 
         Y_spliced = torch.from_numpy(Y_spliced).float()
-        T = torch.from_numpy(T).float()
+        T = torch.from_numpy(T_ss).float()
 
         Y_spec = feature.specaug(Y_spliced)
+        # Y_ss, T_ss = feature.subsample(Y_spec, T, self.subsampling)
         # print("Y spec",Y_spec.shape)
         # Y_ss, T_ss = feature.convolution_subsample(Y_spec,T, self.subsampling)
         # print("Y_ss T_SS",Y_ss.shape,T_ss.shape)
 
         # Y_ss = torch.from_numpy(Y_ss).float()
         # T_ss = torch.from_numpy(T_ss).float()
-        #return Y_ss, T_ss
+        # return Y_ss, T_ss
         return Y_spec, T
