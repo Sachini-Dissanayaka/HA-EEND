@@ -33,8 +33,6 @@ def pit_loss(pred, label, label_delay=0):
       min_loss: (1,)-shape mean cross entropy
       label_perms[min_index]: permutated labels
     """
-    print("pred",pred.shape)
-    print("label",label.shape)
     # label permutations along the speaker axis
     label_perms = [label[..., list(p)] for p
                     in permutations(range(label.shape[-1]))]
@@ -61,12 +59,10 @@ def batch_pit_loss(ys, ts, label_delay=0):
       labels: B-length list of permuted labels
     """
 
-    print("ys",len(ys))
-    print("ts",len(ts))
     loss_w_labels = [pit_loss(y, t, label_delay)
                      for (y, t) in zip(ys, ts)]
     losses, labels = zip(*loss_w_labels)
-    loss = F.sum(F.stack(losses))
+    loss = torch.stack(losses).sum()
     n_frames = np.sum([t.shape[0] for t in ts])
     loss = loss / n_frames
     return loss, labels

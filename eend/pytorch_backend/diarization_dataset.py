@@ -8,6 +8,7 @@ import torch
 import numpy as np
 from eend import kaldi_data
 from eend import feature
+import torch.nn.functional as F
 
 
 def _count_frames(data_len, size, step):
@@ -93,19 +94,15 @@ class KaldiDiarizationDataset(torch.utils.data.Dataset):
         Y_spliced = feature.splice(Y, self.context_size)
 
         # Y_ss: (frame / subsampling, num_ceps * (context_size * 2 + 1))
-        #Y_ss, T_ss = feature.subsample(Y_spliced, T, self.subsampling)
-        T_ss = feature.subsample(T, self.subsampling)
+        
+        
+        # T_ss = feature.subsample(T, self.subsampling)
 
         Y_spliced = torch.from_numpy(Y_spliced).float()
-        T = torch.from_numpy(T_ss).float()
-
+        T = torch.from_numpy(T).float()
+     
         Y_spec = feature.specaug(Y_spliced)
-        # Y_ss, T_ss = feature.subsample(Y_spec, T, self.subsampling)
-        # print("Y spec",Y_spec.shape)
-        # Y_ss, T_ss = feature.convolution_subsample(Y_spec,T, self.subsampling)
-        # print("Y_ss T_SS",Y_ss.shape,T_ss.shape)
+        Y_ss, T_ss = feature.subsample(Y_spec, T, self.subsampling)
 
-        # Y_ss = torch.from_numpy(Y_ss).float()
-        # T_ss = torch.from_numpy(T_ss).float()
-        # return Y_ss, T_ss
-        return Y_spec, T
+        return Y_ss, T_ss
+        #return Y_spec, T
