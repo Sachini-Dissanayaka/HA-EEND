@@ -56,15 +56,15 @@ if [ $stage -le 0 ]; then
         touch data/train_clean_360/.done
     fi
 
-    # Combine train_clean_100 and train_clean_360. This will be used to train,
-    if ! validate_data_dir.sh --no-text --no-feats data/librispeech_comb; then
-        # local/make_sre.sh $data_root data
+    # # Combine train_clean_100 and train_clean_360. This will be used to train,
+    # if ! validate_data_dir.sh --no-text --no-feats data/librispeech_comb; then
+    #     # local/make_sre.sh $data_root data
   
-        # Combine librispeech data
-        utils/combine_data.sh data/librispeech_comb \
-            data/train_clean_100 \
-            data/train_clean_360
-    fi
+    #     # Combine librispeech data
+    #     utils/combine_data.sh data/librispeech_comb \
+    #         data/train_clean_100 \
+    #         data/train_clean_360
+    # fi
 
     if [ ! -d data/musan_bgnoise ]; then
         tar xzf musan_bgnoise.tar.gz
@@ -96,8 +96,12 @@ if [ $stage -le 1 ]; then
     fi
 
     for simu_opts_sil_scale in 2; do
-        for dset in librispeech_comb dev_clean test_clean; do
-            n_mixtures=5000
+        for dset in train_clean_100 dev_clean test_clean; do
+            if [ "$dset" == "train_clean_100" ]; then
+                n_mixtures=2000
+            else
+                n_mixtures=500
+            fi
             simuid=${dset}_ns${simu_opts_num_speaker}_beta${simu_opts_sil_scale}_${n_mixtures}
             # check if you have the simulation
             if ! validate_data_dir.sh --no-text --no-feats $simudir/data/$simuid; then
