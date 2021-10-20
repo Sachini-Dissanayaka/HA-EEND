@@ -42,6 +42,138 @@ class NoamScheduler(_LRScheduler):
         scale = self.d_model ** (-0.5) * min(last_epoch ** (-0.5), last_epoch * self.warmup_steps ** (-1.5))
         return [base_lr * scale for base_lr in self.base_lrs]
 
+class LocalDenseSynthesizerAttention(nn.Module):
+    """Multi-Head Local Dense Synthesizer attention layer
+    
+    :param int n_head: the number of heads
+    :param int n_feat: the dimension of features
+    :param float dropout_rate: dropout rate
+    :param int context_size: context size
+    :param bool use_bias: use bias term in linear layers
+
+    """
+    def __init__(self, n_head, n_feat, dropout_rate, context_size=63, use_bias=False):
+        super().__init__()
+        assert n_feat % n_head == 0
+        # We assume d_v always equals d_k
+        self.d_k = n_feat // n_head
+        self.h = n_head
+        self.c = context_size
+        self.w1 = nn.Linear(n_feat, n_feat, bias=use_bias)
+        self.w2 = nn.Linear(n_feat, n_head*self.c, bias=use_bias)
+        self.w3 = nn.Linear(n_feat, n_feat, bias=use_bias)
+        self.w_out = nn.Linear(n_feat, n_feat, bias=use_bias)
+        self.attn = None
+        self.dropout = nn.Dropout(p=dropout_rate)
+
+    def forward(self, query, key, value, mask):
+        """Forward pass.
+        :param torch.Tensor query: (batch, time, size)
+        :param torch.Tensor key: (batch, time, size) dummy
+        :param torch.Tensor value: (batch, time, size)
+        :param torch.Tensor mask: (batch, time, time) dummy
+        :return torch.Tensor: attentioned and transformed `value` (batch, time, d_model)
+        """
+        bs, time = query.size()[: 2]
+        query = self.w1(query)  # [B, T, d]
+        # [B, T, H*c] --> [B, T, H, c] --> [B, H, T, c]
+        weight = self.w2(torch.relu(query)).view(bs, time, self.h, self.c).transpose(1, 2).contiguous()
+
+        scores = torch.zeros(bs * self.h * time * (time + self.c - 1), dtype=weight.dtype)
+        scores = scores.view(bs, self.h, time, time + self.c - 1).fill_(float("-inf"))
+        scores = scores.to(query.device)  # [B, H, T, T+c-1]
+        scores.as_strided(
+            (bs, self.h, time, self.c),
+            ((time + self.c - 1) * time * self.h, (time + self.c - 1) * time, time + self.c, 1)
+        ).copy_(weight)
+        scores = scores.narrow(-1, int((self.c - 1) / 2), time)  # [B, H, T, T]
+        self.attn = torch.softmax(scores, dim=-1)
+        p_attn = self.dropout(self.attn)
+
+        value = self.w3(value).view(bs, time, self.h, self.d_k)  # [B, T, H, d_k]
+        value = value.transpose(1, 2).contiguous()  # [B, H, T, d_k]
+        x = torch.matmul(p_attn, value)
+        x = x.transpose(1, 2).contiguous().view(bs, time, self.h*self.d_k)
+        x = self.w_out(x)  # [B, T, d]
+
+        return x
+
+class MultiHeadedAttention(nn.Module):
+    """Multi-Head Attention layer
+    :param int n_head: the number of head s
+    :param int n_feat: the number of features
+    :param float dropout_rate: dropout rate
+    """
+
+    def __init__(self, n_head, n_feat, dropout_rate):
+        super(MultiHeadedAttention, self).__init__()
+        assert n_feat % n_head == 0
+        # We assume d_v always equals d_k
+        self.d_k = n_feat // n_head
+        self.h = n_head
+        self.linear_q = nn.Linear(n_feat, n_feat)
+        self.linear_k = nn.Linear(n_feat, n_feat)
+        self.linear_v = nn.Linear(n_feat, n_feat)
+        self.linear_out = nn.Linear(n_feat, n_feat)
+        self.attn = None
+        self.dropout = nn.Dropout(p=dropout_rate)
+
+    def forward(self, query, key, value, mask):
+        """Compute 'Scaled Dot Product Attention'
+        :param torch.Tensor query: (batch, time1, size)
+        :param torch.Tensor key: (batch, time2, size)
+        :param torch.Tensor value: (batch, time2, size)
+        :param torch.Tensor mask: (batch, time1, time2)
+        :param torch.nn.Dropout dropout:
+        :return torch.Tensor: attentined and transformed `value` (batch, time1, d_model)
+             weighted by the query dot key attention (batch, head, time1, time2)
+        """
+        n_batch = query.size(0)
+        q = self.linear_q(query).view(n_batch, -1, self.h, self.d_k)
+        k = self.linear_k(key).view(n_batch, -1, self.h, self.d_k)
+        v = self.linear_v(value).view(n_batch, -1, self.h, self.d_k)
+        q = q.transpose(1, 2)  # (batch, head, time1, d_k)
+        k = k.transpose(1, 2)  # (batch, head, time2, d_k)
+        v = v.transpose(1, 2)  # (batch, head, time2, d_k)
+
+        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)  # (batch, head, time1, time2)
+        if mask is not None:
+            mask = mask.unsqueeze(1).eq(0)  # (batch, 1, time1, time2)
+            min_value = float(numpy.finfo(torch.tensor(0, dtype=scores.dtype).numpy().dtype).min)
+            scores = scores.masked_fill(mask, min_value)
+            self.attn = torch.softmax(scores, dim=-1).masked_fill(mask, 0.0)  # (batch, head, time1, time2)
+        else:
+            self.attn = torch.softmax(scores, dim=-1)  # (batch, head, time1, time2)
+
+        p_attn = self.dropout(self.attn)
+        x = torch.matmul(p_attn, v)  # (batch, head, time1, d_k)
+        x = x.transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k)  # (batch, time1, d_model)
+        return self.linear_out(x), self.attn  # (batch, time1, d_model)
+
+class HybridAttention(nn.Module):
+    """Combination of MHSA and LDSA
+    :param int n_head: the number of head s
+    :param int n_feat: the number of features
+    :param float dropout_rate: dropout rate
+    :param int context_size: context size
+    """
+
+    def __init__(self, n_head, n_feat, dropout_rate, context_size=78):
+        super(HybridAttention, self).__init__()
+        self.dot_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
+        self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
+
+    def forward(self, query, key, value, mask):
+        """
+        :param torch.Tensor query: (batch, time1, size)
+        :param torch.Tensor key: (batch, time2, size)
+        :param torch.Tensor value: (batch, time2, size)
+        :param torch.Tensor mask: (batch, time1, time2)
+        :return torch.Tensor: attentioned and transformed `value`
+        """
+        x = self.ldsa_att(query, key, value, mask)
+        x = self.dot_att(x, x, x, mask)
+        return x
 
 class TransformerModel(nn.Module):
     def __init__(self, n_speakers, in_size, n_heads, n_units, n_layers, dim_feedforward=2048, dropout=0.5, has_pos=False):
@@ -58,9 +190,9 @@ class TransformerModel(nn.Module):
         super(TransformerModel, self).__init__()
         self.n_speakers = n_speakers
         self.in_size = in_size
-        self.n_heads = n_heads
-        self.n_units = n_units
-        self.n_layers = n_layers
+        self.n_heads = n_heads #num of parallel layers
+        self.n_units = n_units #num of nodes
+        self.n_layers = n_layers 
         self.has_pos = has_pos
 
         self.src_mask = None
@@ -68,8 +200,9 @@ class TransformerModel(nn.Module):
         self.encoder_norm = nn.LayerNorm(n_units)
         if self.has_pos:
             self.pos_encoder = PositionalEncoding(n_units, dropout)
-        encoder_layers = TransformerEncoderLayer(n_units, n_heads, dim_feedforward, dropout)
-        self.transformer_encoder = TransformerEncoder(encoder_layers, n_layers)
+        # encoder_layers = TransformerEncoderLayer(n_units, n_heads, dim_feedforward, dropout)
+        # self.transformer_encoder = TransformerEncoder(encoder_layers, n_layers)
+        self.transformer_encoder = HybridAttention(n_heads, n_units, dropout)
         self.decoder = nn.Linear(n_units, n_speakers)
 
         self.init_weights()
@@ -102,14 +235,14 @@ class TransformerModel(nn.Module):
         src = self.encoder(src)
         src = self.encoder_norm(src)
         # src: (T, B, E)
-        src = src.transpose(0, 1)
+        # src = src.transpose(0, 1)
         if self.has_pos:
             # src: (T, B, E)
             src = self.pos_encoder(src)
         # output: (T, B, E)
-        output = self.transformer_encoder(src, self.src_mask)
+        output = self.transformer_encoder(src, src, src, self.src_mask)[0]
         # output: (B, T, E)
-        output = output.transpose(0, 1)
+        # output = output.transpose(0, 1)
         # output: (B, T, C)
         output = self.decoder(output)
 
