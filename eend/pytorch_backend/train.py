@@ -65,8 +65,7 @@ def train(args):
         )
 
     # Prepare model
-    Y, T = next(iter(train_set))
-    #iterable object of all Y_ss and T_ss (form diarization_dataset.py)
+    Y, T = next(iter(train_set)) #STFT and labels of each audio chunk
     
     if args.model_type == 'Transformer':
         model = TransformerModel(
