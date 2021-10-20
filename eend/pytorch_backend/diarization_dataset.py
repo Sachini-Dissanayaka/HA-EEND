@@ -87,6 +87,7 @@ class KaldiDiarizationDataset(torch.utils.data.Dataset):
             self.frame_size,
             self.frame_shift,
             self.n_speakers)
+
         # print("y T",Y.shape,T.shape)
         # Y: (frame, num_ceps)
         Y = feature.transform(Y, self.input_transform)

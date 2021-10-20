@@ -66,6 +66,7 @@ def train(args):
 
     # Prepare model
     Y, T = next(iter(train_set))
+    #iterable object of all Y_ss and T_ss (form diarization_dataset.py)
     
     if args.model_type == 'Transformer':
         model = TransformerModel(
