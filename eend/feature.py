@@ -111,10 +111,17 @@ def subsample(Y, T, subsampling=1):
     T_ss = T[::subsampling]
     return Y_ss,T_ss
 
-def convolution_subsample(Y,T):
-    conv_subsample = Conv2dSubampling(in_channels=1, out_channels=Y.shape[1])
-    Y_ss, T_ss = conv_subsample(Y, T)
-    return Y_ss, T_ss
+# def subsample(T, subsampling=1):
+#     """ Frame subsampling
+#     """
+#     # Y_ss = Y[::subsampling]
+#     T_ss = T[::subsampling]
+#     return T_ss
+
+def convolution_subsample(Y):
+    conv_subsample = Conv2dSubampling(in_channels=1, out_channels=1)
+    Y_ss = conv_subsample(Y)
+    return Y_ss
 
 
 def splice(Y, context_size=0):

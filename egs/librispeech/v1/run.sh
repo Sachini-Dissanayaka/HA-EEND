@@ -70,7 +70,7 @@ fi
 # Inferring
 if [ $stage -le 3 ]; then
     echo "Start inferring"
-    python /home/anjalee/HA-EEND/eend/bin/infer.py -c $infer_conf $test_dir $test_model $infer_out_dir
+     python /home/sachini/HA-EEND/eend/bin/infer.py -c $infer_conf $test_dir $test_model $infer_out_dir
 fi
 
 # Scoring
@@ -81,7 +81,7 @@ if [ $stage -le 4 ]; then
 	find $infer_out_dir -iname "*.h5" > $work/file_list
 	for med in 1 11; do
 	for th in 0.3 0.4 0.5 0.6 0.7; do
-	python /home/anjalee/HA-EEND/eend/bin/make_rttm.py --median=$med --threshold=$th \
+	 python /home/sachini/HA-EEND/eend/bin/make_rttm.py --median=$med --threshold=$th \
 		--frame_shift=80 --subsampling=10 --sampling_rate=8000 \
 		$work/file_list $scoring_dir/hyp_${th}_$med.rttm
 	md-eval.pl -c 0.25 \

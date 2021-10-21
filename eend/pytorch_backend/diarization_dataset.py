@@ -90,20 +90,50 @@ class KaldiDiarizationDataset(torch.utils.data.Dataset):
 
         # print("y T",Y.shape,T.shape)
         # Y: (frame, num_ceps)
-        Y = feature.transform(Y, self.input_transform)
-        # Y_spliced: (frame, num_ceps * (context_size * 2 + 1))
-        Y_spliced = feature.splice(Y, self.context_size)
 
-        # Y_ss: (frame / subsampling, num_ceps * (context_size * 2 + 1))
-        
-        
+        #----------------covolution layer in the model.py---------------
+        # Y = feature.transform(Y, self.input_transform)
+        # Y = torch.from_numpy(Y).float()
+        # Y_spec = feature.specaug(Y)
+        # print("first T", T.shape)
         # T_ss = feature.subsample(T, self.subsampling)
+        # T = torch.from_numpy(T_ss).float()
+        # print("Second T", T.size())
+        # return Y_spec, T
 
-        Y_spliced = torch.from_numpy(Y_spliced).float()
-        T = torch.from_numpy(T).float()
-     
-        Y_spec = feature.specaug(Y_spliced)
-        Y_ss, T_ss = feature.subsample(Y_spec, T, self.subsampling)
+        #---------------without convolution layer specaug+subsampling--------
+        Y = feature.transform(Y, self.input_transform)
+        Y_spliced = feature.splice(Y, self.context_size)
+        Y = torch.from_numpy(Y_spliced).float()
+        Y_spec = feature.specaug(Y)
+        Y_ss,T_ss = feature.subsample(Y_spec,T, self.subsampling) #uncomment subsample method for both Y and T
+        T = torch.from_numpy(T_ss).float()
+        return Y_ss, T
 
-        return Y_ss, T_ss
-        #return Y_spec, T
+
+        # Y_spliced: (frame, num_ceps * (context_size * 2 + 1))
+
+    
+        # print("spec",Y_spec.shape)
+        #Y_spliced = feature.splice(Y, self.context_size)
+        # Y_spliced = feature.convolution_subsample(Y_spec.unsqueeze(0))
+        # i = np.ones(Y_spec.shape)
+        # a = np.expand_dims(i, axis=0)
+        # Y = torch.from_numpy(a).float()
+        # Y_spliced = feature.convolution_subsample(Y)
+        #Y = torch.from_numpy(Y_spliced).float()
+
+        #Y_spec = feature.specaug(Y)
+
+        # Y_squeeze = Y_spliced.squeeze(0)
+        # Y_ss, T_ss = feature.subsample(Y_squeeze, T, self.subsampling)
+        # T_ss = feature.subsample(T, self.subsampling)
+        #Y_ss,T_ss = feature.subsample(Y_spec,T, self.subsampling)
+        # print("final",Y_ss.shape)
+        # Y_ss = torch.from_numpy(Y_ss).float()
+        # T_ss = torch.from_numpy(T_ss).float()
+        #T = torch.from_numpy(T_ss).float()
+
+        #return Y_ss, T
+        # return Y_squeeze, T_ss
+

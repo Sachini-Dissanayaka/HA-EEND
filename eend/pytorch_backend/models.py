@@ -235,9 +235,9 @@ class TransformerModel(nn.Module):
         src = nn.utils.rnn.pad_sequence(src, padding_value=-1, batch_first=True)
 
         # src: (B, T, E)
-        # print("before",src.size())
+        # print("before------------------",src.size())
         # src = self.conv_subsampling(src,src.size())
-        # print("after",src.size())
+        # print("after---------------------",src.size())
         src = self.encoder(src)
         src = self.encoder_norm(src)
         # src: (T, B, E)
