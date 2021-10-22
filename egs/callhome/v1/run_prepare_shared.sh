@@ -23,10 +23,10 @@ stage=0
 #  - musan_root
 #    MUSAN corpus (https://www.openslr.org/17/)
 
-callhome_dir=/data/local/callhome_eng_LDC97S42.tgz
+callhome_dir=$PWD/data/local/callhome_eng
 # swb2_phase1_train=/export/corpora/LDC/LDC98S75
 # data_root=/export/corpora5/LDC
-musan_root=/home/yoshani/HA-EEND/egs/librispeech/v1/musan_bgnoise.tar.gz
+# musan_root=/home/yoshani/HA-EEND/egs/librispeech/v1/musan_bgnoise.tar.gz
 
 # Modify simulated data storage area.
 # This script distributes simulated data under these directories
@@ -107,25 +107,25 @@ if [ $stage -le 0 ]; then
     #         data/swbd2_phase2_train data/swbd2_phase3_train data/sre
     # fi
     # musan data. "back-ground
-    if ! validate_data_dir.sh --no-text --no-feats data/musan_noise_bg; then
-        local/make_musan.sh $musan_root data
-        utils/copy_data_dir.sh data/musan_noise data/musan_noise_bg
-        awk '{if(NR>1) print $1,$1}'  $musan_root/noise/free-sound/ANNOTATIONS > data/musan_noise_bg/utt2spk
-        utils/fix_data_dir.sh data/musan_noise_bg
-    fi
-    # simu rirs 8k
-    if ! validate_data_dir.sh --no-text --no-feats data/simu_rirs_8k; then
-        mkdir -p data/simu_rirs_8k
-        if [ ! -e sim_rir_8k.zip ]; then
-            wget --no-check-certificate http://www.openslr.org/resources/26/sim_rir_8k.zip
-        fi
-        unzip sim_rir_8k.zip -d data/sim_rir_8k
-        find $PWD/data/sim_rir_8k -iname "*.wav" \
-            | awk '{n=split($1,A,/[\/\.]/); print A[n-3]"_"A[n-1], $1}' \
-            | sort > data/simu_rirs_8k/wav.scp
-        awk '{print $1, $1}' data/simu_rirs_8k/wav.scp > data/simu_rirs_8k/utt2spk
-        utils/fix_data_dir.sh data/simu_rirs_8k
-    fi
+    # if ! validate_data_dir.sh --no-text --no-feats data/musan_noise_bg; then
+    #     local/make_musan.sh $musan_root data
+    #     utils/copy_data_dir.sh data/musan_noise data/musan_noise_bg
+    #     awk '{if(NR>1) print $1,$1}'  $musan_root/noise/free-sound/ANNOTATIONS > data/musan_noise_bg/utt2spk
+    #     utils/fix_data_dir.sh data/musan_noise_bg
+    # fi
+    # # simu rirs 8k
+    # if ! validate_data_dir.sh --no-text --no-feats data/simu_rirs_8k; then
+    #     mkdir -p data/simu_rirs_8k
+    #     if [ ! -e sim_rir_8k.zip ]; then
+    #         wget --no-check-certificate http://www.openslr.org/resources/26/sim_rir_8k.zip
+    #     fi
+    #     unzip sim_rir_8k.zip -d data/sim_rir_8k
+    #     find $PWD/data/sim_rir_8k -iname "*.wav" \
+    #         | awk '{n=split($1,A,/[\/\.]/); print A[n-3]"_"A[n-1], $1}' \
+    #         | sort > data/simu_rirs_8k/wav.scp
+    #     awk '{print $1, $1}' data/simu_rirs_8k/wav.scp > data/simu_rirs_8k/utt2spk
+    #     utils/fix_data_dir.sh data/simu_rirs_8k
+    # fi
     # Automatic segmentation using pretrained SAD model
     #     it will take one day using 30 CPU jobs:
     #     make_mfcc: 1 hour, compute_output: 18 hours, decode: 0.5 hours
