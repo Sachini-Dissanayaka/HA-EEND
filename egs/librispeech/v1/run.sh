@@ -20,9 +20,9 @@ conf_dir=conf
 # model_dir=exp/diarize/model/$model_id
 model_dir=exp/diarize/model
 
-train_dir=data/simu/data/train_clean_100_ns2_beta2_2000
-dev_dir=data/simu/data/dev_clean_ns2_beta2_2000
-test_dir=data/simu/data/test_clean_ns2_beta2_2000
+train_dir=/home/yoshani/HA-EEND/egs/librispeech/v1/data/simu/data/train_clean_100_ns2_beta2_2000
+dev_dir=/home/yoshani/HA-EEND/egs/librispeech/v1/data/simu/data/dev_clean_ns2_beta2_500
+test_dir=/home/yoshani/HA-EEND/egs/librispeech/v1/data/simu/data/test_clean_ns2_beta2_500
 train_conf=$conf_dir/train.yaml
 
 init_model=$model_dir/avg.th
@@ -42,14 +42,14 @@ stage=1
 # Training
 if [ $stage -le 1 ]; then
     echo "Start training"
-    python /home/anjalee/HA-EEND/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
+    python /home/yoshani/HA-EEND/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
 fi
 
 # Model averaging
 if [ $stage -le 2 ]; then
     echo "Start model averaging"
     ifiles=`eval echo $model_dir/transformer{91..100}.th`
-    python /home/anjalee/HA-EEND/eend/bin/model_averaging.py $init_model $ifiles
+    python /home/yoshani/HA-EEND/eend/bin/model_averaging.py $init_model $ifiles
 fi
 
 # Adapting
@@ -68,7 +68,7 @@ fi
 # Inferring
 if [ $stage -le 3 ]; then
     echo "Start inferring"
-    python /home/anjalee/HA-EEND/eend/bin/infer.py -c $infer_conf $test_dir $test_model $infer_out_dir
+    python /home/yoshani/HA-EEND/eend/bin/infer.py -c $infer_conf $test_dir $test_model $infer_out_dir
 fi
 
 # Scoring
@@ -79,7 +79,7 @@ if [ $stage -le 4 ]; then
 	find $infer_out_dir -iname "*.h5" > $work/file_list
 	for med in 1 11; do
 	for th in 0.3 0.4 0.5 0.6 0.7; do
-	python /home/anjalee/HA-EEND/eend/bin/make_rttm.py --median=$med --threshold=$th \
+	python /home/yoshani/HA-EEND/eend/bin/make_rttm.py --median=$med --threshold=$th \
 		--frame_shift=80 --subsampling=10 --sampling_rate=8000 \
 		$work/file_list $scoring_dir/hyp_${th}_$med.rttm
 	md-eval.pl -c 0.25 \
