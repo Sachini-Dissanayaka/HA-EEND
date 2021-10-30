@@ -23,7 +23,7 @@ stage=0
 #  - musan_root
 #    MUSAN corpus (https://www.openslr.org/17/)
 
-callhome_dir=$PWD/data/local/callhome_eng
+callhome_dir=$PWD/data/local/nist_recognition_evaluation
 # swb2_phase1_train=/export/corpora/LDC/LDC98S75
 # data_root=/export/corpora5/LDC
 # musan_root=/home/yoshani/HA-EEND/egs/librispeech/v1/musan_bgnoise.tar.gz
