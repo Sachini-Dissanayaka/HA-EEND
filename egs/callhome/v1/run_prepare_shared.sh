@@ -30,11 +30,11 @@ callhome_dir=$PWD/data/local/nist_recognition_evaluation
 
 # Modify simulated data storage area.
 # This script distributes simulated data under these directories
-simu_actual_dirs=(
-$PWD/data/local/diarization-data
+# simu_actual_dirs=(
+# $PWD/data/local/diarization-data
 # /export/c08/$USER/diarization-data
 # /export/c09/$USER/diarization-data
-)
+# )
 
 # data preparation options
 max_jobs_run=4

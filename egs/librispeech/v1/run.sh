@@ -12,15 +12,15 @@ model_dir=exp/diarize/model
 train_dir=data/simu/data/train_clean_100_ns2_beta2_2000
 dev_dir=data/simu/data/dev_clean_ns2_beta2_500
 # test_dir=data/simu/data/test_clean_ns2_beta2_500
-test_dir=/home/yoshani/HA-EEND/egs/callhome/v1/data/callhome2_spk2
+test_dir=data/eval/callhome2_spk2
 train_conf=$conf_dir/train.yaml
 
-train_adapt_dir=/home/yoshani/HA-EEND/egs/callhome/v1/data/callhome1_spk2
-dev_adapt_dir=/home/yoshani/HA-EEND/egs/callhome/v1/data/eval/callhome2_spk2
+train_adapt_dir=data/eval/callhome1_spk2
+dev_adapt_dir=data/eval/callhome2_spk2
 model_adapt_dir=$exp_dir/models_adapt
 adapt_conf=$conf_dir/adapt.yaml
 init_model=$model_dir/avg.th
-test_model=$model_adapt_dir/avg.th
+test_model=$model_dir/avg.th
 
 infer_conf=$conf_dir/infer.yaml
 # infer_out_dir=$exp_dir/infer/librispeech

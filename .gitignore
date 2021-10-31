@@ -3,6 +3,7 @@ egs/**/exp/
 egs/librispeech/v1/sim_rir_8k.zip
 egs/callhome/v1/sim_rir_8k.zip
 egs/callhome/v1/wav/
+egs/librispeech/v1/wav/
 tools/kaldi
 tools/miniconda3.sh
 tools/miniconda3/

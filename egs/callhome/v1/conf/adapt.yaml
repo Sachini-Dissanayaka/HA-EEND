@@ -14,11 +14,10 @@ optimizer: adam
 lr: 1e-5
 context_size: 7
 subsampling: 10
-noam_scale: 1.0
 gradient_accumulation_steps: 1
 transformer_encoder_n_heads: 4
-transformer_encoder_n_layers: 2
+transformer_encoder_n_layers: 4
 transformer_encoder_dropout: 0.1
-noam_warmup_steps: 25000
+noam_warmup_steps: 100000
 seed: 777
 gpu: 0
