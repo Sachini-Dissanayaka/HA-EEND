@@ -22,7 +22,7 @@ model_dir=exp/diarize/model
 
 train_dir=data/simu/data/train_clean_100_ns2_beta2_2000
 dev_dir=data/simu/data/dev_clean_ns2_beta2_2000
-test_dir=data/simu/data/test_clean_ns2_beta2_2000
+test_dir=$PWD/data/simu/data/test_clean_ns2_beta2_500
 train_conf=$conf_dir/train.yaml
 
 init_model=$model_dir/avg.th
@@ -40,19 +40,19 @@ scoring_dir=$exp_dir/scoring/librispeech
 stage=1
 
 # Training
-if [ $stage -le 1 ]; then
-    echo "Start training"
-    python /home/sachini/HA-EEND/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
+# if [ $stage -le 1 ]; then
+#     echo "Start training"
+#     python /home/sachini/HA-EEND/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
 
-fi
+# fi
 
 # Model averaging
-if [ $stage -le 2 ]; then
-    echo "Start model averaging"
-    ifiles=`eval echo $model_dir/transformer{91..100}.th`
-    python /home/sachini/HA-EEND/eend/bin/model_averaging.py $init_model $ifiles
+# if [ $stage -le 2 ]; then
+#     echo "Start model averaging"
+#     ifiles=`eval echo $model_dir/transformer{91..100}.th`
+#     python /home/sachini/HA-EEND/eend/bin/model_averaging.py $init_model $ifiles
 
-fi
+# fi
 
 # Adapting
 # if [ $stage -le 3 ]; then

@@ -20,7 +20,6 @@ B: mini-batch size
 def pit_loss(pred, label, label_delay=0):
     """
     Permutation-invariant training (PIT) cross entropy loss function.
-
     Args:
       pred:  (T,C)-shaped pre-activation values
       label: (T,C)-shaped labels in {0,1}
@@ -28,7 +27,6 @@ def pit_loss(pred, label, label_delay=0):
             pred: 0 1 2 3 4 | 5 6 ... 99 100 |
           label: x x x x x | 0 1 ... 94  95 | 96 97 98 99 100
           calculated area: | <------------> |
-
     Returns:
       min_loss: (1,)-shape mean cross entropy
       label_perms[min_index]: permutated labels
@@ -49,16 +47,13 @@ def pit_loss(pred, label, label_delay=0):
 def batch_pit_loss(ys, ts, label_delay=0):
     """
     PIT loss over mini-batch.
-
     Args:
       ys: B-length list of predictions
       ts: B-length list of labels
-
     Returns:
       loss: (1,)-shape mean cross entropy over mini-batch
       labels: B-length list of permuted labels
     """
-
     loss_w_labels = [pit_loss(y, t, label_delay)
                      for (y, t) in zip(ys, ts)]
     losses, labels = zip(*loss_w_labels)
@@ -71,7 +66,6 @@ def batch_pit_loss(ys, ts, label_delay=0):
 def calc_diarization_error(pred, label, label_delay=0):
     """
     Calculates diarization error stats for reporting.
-
     Args:
       pred (torch.FloatTensor): (T,C)-shaped pre-activation values
       label (torch.FloatTensor): (T,C)-shaped labels in {0,1}
@@ -79,7 +73,6 @@ def calc_diarization_error(pred, label, label_delay=0):
            pred: 0 1 2 3 4 | 5 6 ... 99 100 |
           label: x x x x x | 0 1 ... 94  95 | 96 97 98 99 100
           calculated area: | <------------> |
-
     Returns:
       res: dict of diarization error stats
     """
@@ -108,7 +101,6 @@ def report_diarization_error(ys, labels):
     """
     Reports diarization errors
     Should be called with torch.no_grad
-
     Args:
       ys: B-length list of predictions (torch.FloatTensor)
       labels: B-length list of labels (torch.FloatTensor)
@@ -123,4 +115,3 @@ def report_diarization_error(ys, labels):
     
     stats_avg = {k:v/cnt for k,v in stats_avg.items()}
     return stats_avg
-        

@@ -95,10 +95,8 @@ class KaldiDiarizationDataset(torch.utils.data.Dataset):
         # Y = feature.transform(Y, self.input_transform)
         # Y = torch.from_numpy(Y).float()
         # Y_spec = feature.specaug(Y)
-        # print("first T", T.shape)
         # T_ss = feature.subsample(T, self.subsampling)
         # T = torch.from_numpy(T_ss).float()
-        # print("Second T", T.size())
         # return Y_spec, T
 
         #---------------without convolution layer specaug+subsampling--------

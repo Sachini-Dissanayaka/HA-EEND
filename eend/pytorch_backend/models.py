@@ -236,6 +236,7 @@ class TransformerModel(nn.Module):
 
         # src: (B, T, E)
         # print("before------------------",src.size())
+        # print(src)
         # src = self.conv_subsampling(src,src.size())
         # print("after---------------------",src.size())
         src = self.encoder(src)
