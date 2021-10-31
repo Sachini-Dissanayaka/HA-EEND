@@ -40,19 +40,19 @@ scoring_dir=$exp_dir/scoring/librispeech
 stage=1
 
 # Training
-# if [ $stage -le 1 ]; then
-#     echo "Start training"
-#     python /home/sachini/HA-EEND/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
+if [ $stage -le 1 ]; then
+    echo "Start training"
+    python /home/sachini/HA-EEND/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
 
-# fi
+fi
 
 # Model averaging
-# if [ $stage -le 2 ]; then
-#     echo "Start model averaging"
-#     ifiles=`eval echo $model_dir/transformer{91..100}.th`
-#     python /home/sachini/HA-EEND/eend/bin/model_averaging.py $init_model $ifiles
+if [ $stage -le 2 ]; then
+    echo "Start model averaging"
+    ifiles=`eval echo $model_dir/transformer{91..100}.th`
+    python /home/sachini/HA-EEND/eend/bin/model_averaging.py $init_model $ifiles
 
-# fi
+fi
 
 # Adapting
 # if [ $stage -le 3 ]; then
