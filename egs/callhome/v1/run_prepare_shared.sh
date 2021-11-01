@@ -11,7 +11,7 @@
 
 stage=0
 
-callhome_dir=HA-EEND/egs/callhome/v1/data/local/nist_recognition_evaluation
+callhome_dir=$PWD/data/local/nist_recognition_evaluation
 
 # Modify simulated data storage area.
 # This script distributes simulated data under these directories
@@ -66,7 +66,6 @@ fi
 
 if [ $stage -le 1 ]; then
     echo "prepare kaldi-style datasets"
-#     mini_librispeech_url=http://www.openslr.org/resources/31
 #     mkdir -p data/local
     local/download_and_untar.sh data/local dev-clean
     local/download_and_untar.sh data/local test-clean
