@@ -12,6 +12,7 @@ model_dir=$exp_dir/model
 train_dir=data/simu/data/train_clean_100_ns2_beta2_2000
 dev_dir=data/simu/data/dev_clean_ns2_beta2_500
 test_dir=data/eval/callhome2_spk2
+# test_dir=data/simu/data/test_clean_ns2_beta2_500
 train_conf=$conf_dir/train.yaml
 
 train_adapt_dir=data/eval/callhome1_spk2
