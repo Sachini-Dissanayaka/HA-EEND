@@ -38,7 +38,7 @@ if [ $stage -le 0 ]; then
     local/download_and_untar.sh data/local dev-clean
     local/download_and_untar.sh data/local test-clean
     local/download_and_untar.sh data/local train-clean-100
-    local/download_and_untar.sh data/local train-clean-360
+
     if [ ! -f data/dev_clean/.done ]; then
         local/data_prep.sh data/local/LibriSpeech/dev-clean data/dev_clean || exit
         touch data/dev_clean/.done
@@ -48,23 +48,9 @@ if [ $stage -le 0 ]; then
         touch data/test_clean/.done
     fi
     if [ ! -f data/train_clean_100/.done ]; then    
-        local/data_prep.sh data/local/LibriSpeech/train-clean-100 data/train_clean_100 || exit
+        local/data_prep.sh data/local/LibriSpeech/train-clean-100 data/train_clean_100
         touch data/train_clean_100/.done
     fi
-    if [ ! -f data/train_clean_360/.done ]; then    
-        local/data_prep.sh data/local/LibriSpeech/train-clean-360 data/train_clean_360
-        touch data/train_clean_360/.done
-    fi
-
-    # # Combine train_clean_100 and train_clean_360. This will be used to train,
-    # if ! validate_data_dir.sh --no-text --no-feats data/librispeech_comb; then
-    #     # local/make_sre.sh $data_root data
-  
-    #     # Combine librispeech data
-    #     utils/combine_data.sh data/librispeech_comb \
-    #         data/train_clean_100 \
-    #         data/train_clean_360
-    # fi
 
     if [ ! -d data/musan_bgnoise ]; then
         tar xzf musan_bgnoise.tar.gz
