@@ -54,7 +54,7 @@ class LocalDenseSynthesizerAttention(nn.Module):
     :param bool use_bias: use bias term in linear layers
 
     """
-    def __init__(self, n_head, n_feat, dropout_rate, context_size=63, use_bias=False):
+    def __init__(self, n_head, n_feat, dropout_rate, context_size=95, use_bias=False):
         super().__init__()
         assert n_feat % n_head == 0
         # We assume d_v always equals d_k
@@ -198,7 +198,7 @@ class TransformerModel(nn.Module):
         self.has_pos = has_pos
 
         self.src_mask = None
-        # self.conv_subsampling = Conv2dSubampling(in_channels = 1, out_channels = 1)
+        self.conv_subsampling = Conv2dSubampling(in_channels = 1, out_channels = 1)
         self.encoder = nn.Linear(in_size, n_units)
         self.encoder_norm = nn.LayerNorm(n_units)
         if self.has_pos:
@@ -235,7 +235,7 @@ class TransformerModel(nn.Module):
         src = nn.utils.rnn.pad_sequence(src, padding_value=-1, batch_first=True)
 
         # src: (B, T, E)
-        # print("before------------------",src.size())
+        print("before------------------",src.size())
         # print(src)
         # src = self.conv_subsampling(src,src.size())
         # print("after---------------------",src.size())

@@ -104,23 +104,23 @@ def specaug(Y):
     feature = spec_augment(Y)
     return feature
 
-def subsample(Y, T, subsampling=1):
-    """ Frame subsampling
-    """
-    Y_ss = Y[::subsampling]
-    T_ss = T[::subsampling]
-    return Y_ss,T_ss
-
-# def subsample(T, subsampling=1):
+# def subsample(Y, T, subsampling=1):
 #     """ Frame subsampling
 #     """
-#     # Y_ss = Y[::subsampling]
+#     Y_ss = Y[::subsampling]
 #     T_ss = T[::subsampling]
-#     return T_ss
+#     return Y_ss,T_ss
+
+def subsample(T, subsampling=1):
+    """ Frame subsampling
+    """
+    # Y_ss = Y[::subsampling]
+    T_ss = T[::subsampling]
+    return T_ss
 
 def convolution_subsample(Y):
     conv_subsample = Conv2dSubampling(in_channels=1, out_channels=1)
-    Y_ss = conv_subsample(Y)
+    Y_ss = conv_subsample(Y,Y.size())
     return Y_ss
 
 
