@@ -42,6 +42,89 @@ class NoamScheduler(_LRScheduler):
         scale = self.d_model ** (-0.5) * min(last_epoch ** (-0.5), last_epoch * self.warmup_steps ** (-1.5))
         return [base_lr * scale for base_lr in self.base_lrs]
 
+class DenseSynthesizerAttention(nn.Module):
+
+    def __init__(self, d_k, n_feat, dropout, max_seq_len=500):
+        super(DenseSynthesizerAttention, self).__init__()
+        self.w_1 = nn.Linear(d_k, d_k)
+        self.w_2 = nn.Linear(d_k, max_seq_len)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, q, v, len_q, mask=None):
+        # b x n x lq x dq -> b x n x lq x lq #
+        weight = self.relu(self.w_1(q))
+        print('weight', weight.shape)
+        attn = self.w_2(weight)[:,:,:,:len_q]
+        print('attn', attn.shape)
+
+        if mask is not None:
+            attn = attn.masked_fill(mask == 0, -1e9)
+
+        attn = self.dropout(F.softmax(attn, dim=-1))
+        print('attn2', attn.shape)
+        print('vgfffsc', v.shape)
+
+        output = torch.matmul(attn, v)
+        return output, attn
+
+class MultiHeadDenseSynthesizer(nn.Module):
+    
+    def __init__(self, n_head, n_feat, dropout):
+        super().__init__()
+
+        self.n_head = n_head    
+        self.d_k = n_feat // n_head
+        print("dk", self.d_k)
+        self.w_qs = nn.Linear(n_feat, n_head * self.d_k, bias=False)
+        self.w_vs = nn.Linear(n_feat, n_head * self.d_k, bias=False)
+        self.attention = DenseSynthesizerAttention(self.d_k, n_feat, dropout)
+        
+        self.fc = nn.Linear(n_head * self.d_k, n_feat, bias=False)
+        self.dropout = nn.Dropout(dropout)
+        self.layer_norm = nn.LayerNorm(n_feat, eps=1e-6)
+
+    def forward(self, q, k, v, mask=None):
+
+        d_k, n_head = self.d_k, self.n_head
+        sz_b, len_q, len_k, len_v = q.size(0), q.size(1), k.size(1), v.size(1)
+
+        residual = q
+
+        # Pass through the pre-attention projection: b x lq x (n*dv)
+        # Separate different heads: b x lq x n x dv
+        q = self.w_qs(q).view(sz_b, len_q, n_head, d_k)
+        v = self.w_vs(v).view(sz_b, len_v, n_head, d_k)
+        print('lq', len_q)
+        print('q', q.shape)
+        print('v', v.shape)
+
+        # Transpose for attention dot product: b x n x lq x dv
+        q, v = q.transpose(1, 2), v.transpose(1, 2)
+        print('q#', q.shape)
+        print('v#', v.shape)
+        # For head axis broadcasting.
+        if mask is not None:
+            mask = mask.unsqueeze(1) 
+        
+        q, attn = self.attention(q, v, len_q, mask=mask)
+        print('q@', q.shape)
+
+        # Transpose to move the head dimension back: b x lq x n x dv
+        # Combine the last two dimensions to concatenate all the heads together: b x lq x (n*dv)
+        q = q.transpose(1, 2).contiguous().view(sz_b, len_q, -1)
+        print('q: ', q.shape)
+        # q = q.contiguous()
+        # print('q_2: ', q.shape)
+        # print('okkk: ', sz_b, len_q)
+        # q = q.view(sz_b, len_q, -1)
+        
+        q = self.dropout(self.fc(q))
+        q += residual
+        q = self.layer_norm(q)
+        print(q.shape, sz_b, len_q)
+        return q
+
 class LocalDenseSynthesizerAttention(nn.Module):
     """Multi-Head Local Dense Synthesizer attention layer
     
@@ -148,7 +231,7 @@ class MultiHeadedAttention(nn.Module):
         p_attn = self.dropout(self.attn)
         x = torch.matmul(p_attn, v)  # (batch, head, time1, d_k)
         x = x.transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k)  # (batch, time1, d_model)
-        return self.linear_out(x), self.attn  # (batch, time1, d_model)
+        return self.linear_out(x) # (batch, time1, d_model)
 
 class HybridAttention(nn.Module):
     """Combination of MHSA and LDSA
@@ -158,20 +241,20 @@ class HybridAttention(nn.Module):
     :param int context_size: context size
     """
 
-    def __init__(self, n_head, n_feat, dropout_rate, context_size=78):
+    def __init__(self, n_head, n_feat, dropout_rate, context_size=239):
         super(HybridAttention, self).__init__()
         self.dot_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
-        self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
+        self.dsa_att = MultiHeadDenseSynthesizer(n_head, n_feat, dropout_rate)
 
     def forward(self, query, key, value, mask):
         """
         :param torch.Tensor query: (batch, time1, size)
         :param torch.Tensor key: (batch, time2, size)
-        :param torch.Tensor value: (batch, time2, size)
+        :param torch.Tensor value: (batch, time2, size)dense syn
         :param torch.Tensor mask: (batch, time1, time2)
         :return torch.Tensor: attentioned and transformed `value`
         """
-        x = self.ldsa_att(query, key, value, mask)
+        x = self.dsa_att(query, key, value, mask)
         x = self.dot_att(x, x, x, mask)
         return x
 
@@ -240,7 +323,7 @@ class TransformerModel(nn.Module):
             # src: (T, B, E)
             src = self.pos_encoder(src)
         # output: (T, B, E)
-        output = self.transformer_encoder(src, src, src, self.src_mask)[0]
+        output = self.transformer_encoder(src, src, src, self.src_mask)
         # output: (B, T, E)
         # output = output.transpose(0, 1)
         # output: (B, T, C)
