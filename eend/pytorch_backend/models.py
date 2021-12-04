@@ -119,7 +119,109 @@ def chunkwise(xs, N_l, N_c, N_r):
     xs_chunk = xs_pad[:, index].contiguous().view(bs * n_chunks, N_l + N_c + N_r, idim)
     return xs_chunk
 
-    
+class RandomSynthesizerAttention(nn.Module):
+    def __init__(self, n_head, batch_size, dropout = 0.1, max_seq_len=500):
+        super(RandomSynthesizerAttention, self).__init__()
+        #device = torch.device("GPU"),
+        self.random_attn = torch.randn(batch_size, n_head, max_seq_len, max_seq_len, requires_grad = True)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, v, len_q, mask=None):
+
+        # b x n x max_len x max_len -> b x n x lq x lq
+        # random_attn = self.random_attn[:mask.shape[0],:,:len_q,:len_q]------------
+        random_attn = self.random_attn[:,:,:len_q,:len_q]
+        random_attn = random_attn.to(torch.device('cpu'))
+
+        if mask is not None:
+            random_attn = random_attn.masked_fill(mask == 0, -1e9)
+
+        random_attn = self.dropout(F.softmax(random_attn, dim=-1))
+
+        print("rand_att:",random_attn.shape)
+        print("v:",v.shape)
+        output = torch.matmul(random_attn, v)
+        
+        return output, random_attn
+
+class MultiHeadRandomSynthesizer(nn.Module):
+
+    def __init__(self, n_head, n_feat, dropout, batch_size=64):
+        super().__init__()
+
+        self.n_head = n_head 
+        self.batch_size = batch_size 
+        self.d_k = n_feat // n_head
+        self.w_qs = nn.Linear(n_feat, n_head * self.d_k, bias=False)
+        self.w_vs = nn.Linear(n_feat, n_head * self.d_k, bias=False)
+        self.attention = RandomSynthesizerAttention(self.n_head, self.batch_size, dropout)
+
+        self.fc = nn.Linear(n_head * self.d_k, n_feat, bias=False)
+        self.dropout = nn.Dropout(dropout)
+        self.layer_norm = nn.LayerNorm(n_feat, eps=1e-6)
+
+    def forward(self, q, k, v, mask=None):
+
+        d_k, n_head = self.d_k, self.n_head
+        sz_b, len_q, len_k, len_v = q.size(0), q.size(1), k.size(1), v.size(1)
+
+        residual = q
+
+        # Pass through the pre-attention projection: b x lq x (n*dv)
+        # Separate different heads: b x lq x n x dv
+        q = self.w_qs(q).view(sz_b, len_q, n_head, d_k)
+        v = self.w_vs(v).view(sz_b, len_v, n_head, d_k)
+
+        # Transpose for attention dot product: b x n x lq x dv
+        q, v = q.transpose(1, 2), v.transpose(1, 2)
+
+        # For head axis broadcasting.
+        if mask is not None:
+            mask = mask.unsqueeze(1) 
+
+        q, attn = self.attention(v, len_q, mask=mask)
+
+        # Transpose to move the head dimension back: b x lq x n x dv
+        # Combine the last two dimensions to concatenate all the heads together: b x lq x (n*dv)
+        q = q.transpose(1, 2).contiguous().view(sz_b, len_q, -1)
+        # print('q: ', q.shape)
+        # q = q.contiguous()
+        # print('q_2: ', q.shape)
+        # print('okkk: ', sz_b, len_q)
+        # q = q.view(sz_b, len_q, -1)
+
+        q = self.dropout(self.fc(q))
+        q += residual
+        q = self.layer_norm(q)
+
+        return q
+
+class FactorizedDenseAttention(nn.Module):
+    def __init__(self, max_seq_len, d_k, f, attn_dropout = 0.1):
+        #d_hid = 8*(128/8)/2
+        super(DenseAttention, self).__init__()
+        self.f = f
+        self.max_seq_len = max_seq_len
+        self.f_a = nn.Linear(d_k, f)
+        self.f_b = nn.Linear(d_k, max_seq_len/f)
+        # self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(attn_dropout)
+
+    def forward(self, q, v, len_q, mask=None, factorize=False):
+
+        h_a = torch.repeat_interleave(self.f_a(q), self.max_seq_len/self.f, -1)[:,:,:,:len_q]
+        h_b = torch.repeat_interleave(self.f_b(q), self.f, -1)[:,:,:,:len_q]
+        dense_attn = torch.matmul(h_a, h_b.transpose(2, 3))
+
+        if mask is not None:
+            dense_attn = dense_attn.masked_fill(mask == 0, -1e9)
+
+        dense_attn = self.dropout(F.softmax(dense_attn, dim=-1))
+        output = torch.matmul(dense_attn, v)
+        
+        return output, dense_attn
+
+
 class LocalDenseSynthesizerAttention(nn.Module):
     """Multi-Head Local Dense Synthesizer attention layer
     
@@ -238,7 +340,8 @@ class HybridAttention(nn.Module):
     def __init__(self, n_head, n_feat, dropout_rate, context_size=95):
         super(HybridAttention, self).__init__()
         self.dot_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
-        self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
+        # self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
+        self.rand_att = MultiHeadRandomSynthesizer(n_head, n_feat, dropout_rate)
 
     def forward(self, query, key, value, mask):
         """
@@ -248,7 +351,8 @@ class HybridAttention(nn.Module):
         :param torch.Tensor mask: (batch, time1, time2)
         :return torch.Tensor: attentioned and transformed `value`
         """
-        x = self.ldsa_att(query, key, value, mask)
+        # x = self.ldsa_att(query, key, value, mask)
+        x = self.rand_att(query, key, value, mask)
         x = self.dot_att(x, x, x, mask)
         return x
 
@@ -279,8 +383,8 @@ class TransformerModel(nn.Module):
             self.pos_encoder = PositionalEncoding(n_units, dropout)
         # encoder_layers = TransformerEncoderLayer(n_units, n_heads, dim_feedforward, dropout)
         # self.transformer_encoder = TransformerEncoder(encoder_layers, n_layers)
-        # self.transformer_encoder = HybridAttention(n_heads, n_units, dropout)
-        self.transformer_encoder = LocalDenseSynthesizerAttention(n_heads, n_units, dropout)
+        self.transformer_encoder = HybridAttention(n_heads, n_units, dropout)
+        # self.transformer_encoder = LocalDenseSynthesizerAttention(n_heads, n_units, dropout)
         self.decoder = nn.Linear(n_units, n_speakers)
 
         self.init_weights()
@@ -318,7 +422,8 @@ class TransformerModel(nn.Module):
             # src: (T, B, E)
             src = self.pos_encoder(src)
         # output: (T, B, E)
-        output = self.transformer_encoder(src, src, src, self.src_mask)
+        print(src.shape)
+        output = self.transformer_encoder(src, src, src, self.src_mask)[0]
         # output: (B, T, E)
         # output = output.transpose(0, 1)
         # output: (B, T, C)
