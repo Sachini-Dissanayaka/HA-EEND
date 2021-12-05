@@ -138,6 +138,9 @@ def train(args):
             y = [yi.to(device) for yi in y]
             t = [ti.to(device) for ti in t]
 
+            if len(y) != 64:
+                continue
+           
             output = model(y)
             loss, label = batch_pit_loss(output, t)
             # clear graph here
@@ -162,7 +165,11 @@ def train(args):
             for y, t in dev_iter:
                 y = [yi.to(device) for yi in y]
                 t = [ti.to(device) for ti in t]
+                
+                if len(y) != 64:
+                    continue
                 output = model(y)
+
                 _, label = batch_pit_loss(output, t)
                 stats = report_diarization_error(output, label)
                 for k, v in stats.items():

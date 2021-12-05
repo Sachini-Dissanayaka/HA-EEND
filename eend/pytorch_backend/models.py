@@ -138,8 +138,8 @@ class RandomSynthesizerAttention(nn.Module):
 
         random_attn = self.dropout(F.softmax(random_attn, dim=-1))
 
-        print("rand_att:",random_attn.shape)
-        print("v:",v.shape)
+        # print("rand_att:",random_attn.shape)
+        # print("v:",v.shape)
         output = torch.matmul(random_attn, v)
         
         return output, random_attn
@@ -150,7 +150,7 @@ class MultiHeadRandomSynthesizer(nn.Module):
         super().__init__()
 
         self.n_head = n_head 
-        self.batch_size = batch_size 
+        self.batch_size = batch_size
         self.d_k = n_feat // n_head
         self.w_qs = nn.Linear(n_feat, n_head * self.d_k, bias=False)
         self.w_vs = nn.Linear(n_feat, n_head * self.d_k, bias=False)
@@ -384,6 +384,7 @@ class TransformerModel(nn.Module):
         # encoder_layers = TransformerEncoderLayer(n_units, n_heads, dim_feedforward, dropout)
         # self.transformer_encoder = TransformerEncoder(encoder_layers, n_layers)
         self.transformer_encoder = HybridAttention(n_heads, n_units, dropout)
+        # self.transformer_encoder = MultiHeadedAttention(n_head, n_units, dropout_rate)
         # self.transformer_encoder = LocalDenseSynthesizerAttention(n_heads, n_units, dropout)
         self.decoder = nn.Linear(n_units, n_speakers)
 
@@ -422,7 +423,7 @@ class TransformerModel(nn.Module):
             # src: (T, B, E)
             src = self.pos_encoder(src)
         # output: (T, B, E)
-        print(src.shape)
+        # print(src.shape)
         output = self.transformer_encoder(src, src, src, self.src_mask)[0]
         # output: (B, T, E)
         # output = output.transpose(0, 1)
