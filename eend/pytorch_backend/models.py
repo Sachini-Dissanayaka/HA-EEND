@@ -130,7 +130,7 @@ class RandomSynthesizerAttention(nn.Module):
 
         # b x n x max_len x max_len -> b x n x lq x lq
         # random_attn = self.random_attn[:mask.shape[0],:,:len_q,:len_q]------------
-        random_attn = self.random_attn[:,:,:len_q,:len_q]
+        random_attn = self.random_attn[:v.shape[0],:,:len_q,:len_q]  # (batch, head, time, time)
         random_attn = random_attn.to(torch.device('cpu'))
 
         if mask is not None:
@@ -138,9 +138,7 @@ class RandomSynthesizerAttention(nn.Module):
 
         random_attn = self.dropout(F.softmax(random_attn, dim=-1))
 
-        # print("rand_att:",random_attn.shape)
-        # print("v:",v.shape)
-        output = torch.matmul(random_attn, v)
+        output = torch.matmul(random_attn, v) # (batch, head, time, d_k)
         
         return output, random_attn
 
@@ -152,16 +150,17 @@ class MultiHeadRandomSynthesizer(nn.Module):
         self.n_head = n_head 
         self.batch_size = batch_size
         self.d_k = n_feat // n_head
-        self.w_qs = nn.Linear(n_feat, n_head * self.d_k, bias=False)
-        self.w_vs = nn.Linear(n_feat, n_head * self.d_k, bias=False)
+        self.w_qs = nn.Linear(n_feat, n_feat, bias=False) # query
+        self.w_vs = nn.Linear(n_feat, n_feat, bias=False) # value
         self.attention = RandomSynthesizerAttention(self.n_head, self.batch_size, dropout)
 
-        self.fc = nn.Linear(n_head * self.d_k, n_feat, bias=False)
+        self.fc = nn.Linear(n_feat, n_feat, bias=False)
         self.dropout = nn.Dropout(dropout)
         self.layer_norm = nn.LayerNorm(n_feat, eps=1e-6)
 
     def forward(self, q, k, v, mask=None):
 
+        # q: (batch, time, size)
         d_k, n_head = self.d_k, self.n_head
         sz_b, len_q, len_k, len_v = q.size(0), q.size(1), k.size(1), v.size(1)
 
@@ -169,26 +168,23 @@ class MultiHeadRandomSynthesizer(nn.Module):
 
         # Pass through the pre-attention projection: b x lq x (n*dv)
         # Separate different heads: b x lq x n x dv
-        q = self.w_qs(q).view(sz_b, len_q, n_head, d_k)
-        v = self.w_vs(v).view(sz_b, len_v, n_head, d_k)
+        q = self.w_qs(q).view(sz_b, -1, n_head, d_k)
+        v = self.w_vs(v).view(sz_b, -1, n_head, d_k) 
 
         # Transpose for attention dot product: b x n x lq x dv
-        q, v = q.transpose(1, 2), v.transpose(1, 2)
+        q, v = q.transpose(1, 2), v.transpose(1, 2) # (batch, head, time, d_k)
 
         # For head axis broadcasting.
         if mask is not None:
             mask = mask.unsqueeze(1) 
 
-        q, attn = self.attention(v, len_q, mask=mask)
+        q, attn = self.attention(v, len_q, mask=mask) # q here is the context matrix (batch, head, time, d_k)
 
         # Transpose to move the head dimension back: b x lq x n x dv
         # Combine the last two dimensions to concatenate all the heads together: b x lq x (n*dv)
-        q = q.transpose(1, 2).contiguous().view(sz_b, len_q, -1)
-        # print('q: ', q.shape)
-        # q = q.contiguous()
-        # print('q_2: ', q.shape)
-        # print('okkk: ', sz_b, len_q)
-        # q = q.view(sz_b, len_q, -1)
+        # q = q.transpose(1, 2).contiguous().view(sz_b, len_q, -1) # (batch, time1, d_model)
+        
+        q = q.transpose(1, 2).contiguous().view(sz_b, -1, n_head * d_k) 
 
         q = self.dropout(self.fc(q))
         q += residual
@@ -239,9 +235,9 @@ class LocalDenseSynthesizerAttention(nn.Module):
         self.d_k = n_feat // n_head
         self.h = n_head
         self.c = context_size
-        self.w1 = nn.Linear(n_feat, n_feat, bias=use_bias)
-        self.w2 = nn.Linear(n_feat, n_head*self.c, bias=use_bias)
-        self.w3 = nn.Linear(n_feat, n_feat, bias=use_bias)
+        self.w1 = nn.Linear(n_feat, n_feat, bias=use_bias) # query layer
+        self.w2 = nn.Linear(n_feat, n_head*self.c, bias=use_bias) # key layer
+        self.w3 = nn.Linear(n_feat, n_feat, bias=use_bias) # value layer
         self.w_out = nn.Linear(n_feat, n_feat, bias=use_bias)
         self.attn = None
         self.dropout = nn.Dropout(p=dropout_rate)
@@ -290,7 +286,7 @@ class MultiHeadedAttention(nn.Module):
         # We assume d_v always equals d_k
         self.d_k = n_feat // n_head
         self.h = n_head
-        self.linear_q = nn.Linear(n_feat, n_feat)
+        self.linear_q = nn.Linear(n_feat, n_feat) # in_features, out_features
         self.linear_k = nn.Linear(n_feat, n_feat)
         self.linear_v = nn.Linear(n_feat, n_feat)
         self.linear_out = nn.Linear(n_feat, n_feat)
@@ -371,8 +367,8 @@ class TransformerModel(nn.Module):
         super(TransformerModel, self).__init__()
         self.n_speakers = n_speakers
         self.in_size = in_size
-        self.n_heads = n_heads #num of parallel layers
-        self.n_units = n_units #num of nodes
+        self.n_heads = n_heads # num of parallel layers
+        self.n_units = n_units # num of nodes / num of features (D)
         self.n_layers = n_layers 
         self.has_pos = has_pos
 

@@ -137,9 +137,6 @@ def train(args):
         for step, (y, t) in tqdm(enumerate(train_iter), ncols=100, total=len(train_iter)):
             y = [yi.to(device) for yi in y]
             t = [ti.to(device) for ti in t]
-
-            if len(y) != 64:
-                continue
            
             output = model(y)
             loss, label = batch_pit_loss(output, t)
@@ -165,9 +162,7 @@ def train(args):
             for y, t in dev_iter:
                 y = [yi.to(device) for yi in y]
                 t = [ti.to(device) for ti in t]
-                
-                if len(y) != 64:
-                    continue
+
                 output = model(y)
 
                 _, label = batch_pit_loss(output, t)
