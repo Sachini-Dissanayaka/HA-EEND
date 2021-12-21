@@ -4,11 +4,13 @@
 
 import numpy as np
 import math
+import copy
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
+from torch.nn import ModuleList
 
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim import Optimizer
@@ -130,7 +132,7 @@ class LocalDenseSynthesizerAttention(nn.Module):
     :param bool use_bias: use bias term in linear layers
 
     """
-    def __init__(self, n_head, n_feat, dropout_rate, context_size=95, use_bias=False):
+    def __init__(self, n_head, n_feat, dropout_rate, context_size=160, use_bias=False):
         super().__init__()
         assert n_feat % n_head == 0
         # We assume d_v always equals d_k
@@ -235,9 +237,10 @@ class HybridAttention(nn.Module):
     :param int context_size: context size
     """
 
-    def __init__(self, n_head, n_feat, dropout_rate, context_size=95):
+    def __init__(self, n_head, n_feat, dropout_rate, dim_feedforward, context_size=160):
         super(HybridAttention, self).__init__()
-        self.dot_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
+        # self.dot_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
+        self.dot_att = TransformerEncoderLayer(n_feat, n_head, dim_feedforward, dropout_rate)
         self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
 
     def forward(self, query, key, value, mask):
@@ -249,7 +252,7 @@ class HybridAttention(nn.Module):
         :return torch.Tensor: attentioned and transformed `value`
         """
         x = self.ldsa_att(query, key, value, mask)
-        x = self.dot_att(x, x, x, mask)
+        x = self.dot_att(x, mask)
         return x
 
 class TransformerModel(nn.Module):
@@ -279,8 +282,10 @@ class TransformerModel(nn.Module):
             self.pos_encoder = PositionalEncoding(n_units, dropout)
         # encoder_layers = TransformerEncoderLayer(n_units, n_heads, dim_feedforward, dropout)
         # self.transformer_encoder = TransformerEncoder(encoder_layers, n_layers)
-        # self.transformer_encoder = HybridAttention(n_heads, n_units, dropout)
-        self.transformer_encoder = LocalDenseSynthesizerAttention(n_heads, n_units, dropout)
+        hybrid_layer = HybridAttention(n_heads, n_units, dropout, dim_feedforward)
+        self.transformer_encoder = ModuleList([copy.deepcopy(hybrid_layer) for i in range(n_layers)])
+        # self.transformer_encoder = HybridAttention(n_heads, n_units, dropout, dim_feedforward)
+        # self.transformer_encoder = LocalDenseSynthesizerAttention(n_heads, n_units, dropout)
         self.decoder = nn.Linear(n_units, n_speakers)
 
         self.init_weights()
@@ -318,7 +323,11 @@ class TransformerModel(nn.Module):
             # src: (T, B, E)
             src = self.pos_encoder(src)
         # output: (T, B, E)
-        output = self.transformer_encoder(src, src, src, self.src_mask)
+        output = src
+
+        for mod in self.transformer_encoder:
+            output = mod(output, output, output, self.src_mask)
+        # output = self.transformer_encoder(src, src, src, self.src_mask)
         # output: (B, T, E)
         # output = output.transpose(0, 1)
         # output: (B, T, C)
