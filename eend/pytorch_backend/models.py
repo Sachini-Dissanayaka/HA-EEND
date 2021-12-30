@@ -253,7 +253,7 @@ class HybridAttention(nn.Module):
         self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
         
         # Implementation of Feedforward model
-        self.linear1 = Linear(n_feat, dim_feedforward) # used relu as in hitachi-speech
+        self.linear1 = Linear(n_feat, dim_feedforward) # TODO: use ReLU as in hitachi-speech?
         self.dropout = Dropout(dropout_rate)
         self.linear2 = Linear(dim_feedforward, n_feat)
 
