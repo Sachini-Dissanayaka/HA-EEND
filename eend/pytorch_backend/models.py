@@ -252,8 +252,9 @@ class HybridAttention(nn.Module):
         self.self_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
         self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
         
-        # Implementation of Feedforward model
-        self.linear1 = Linear(n_feat, dim_feedforward) # TODO: use ReLU as in hitachi-speech?
+        # Implementation of Position-wise Feed-Forward model
+        self.linear1 = Linear(n_feat, dim_feedforward) 
+        self.relu = ReLU()
         self.dropout = Dropout(dropout_rate)
         self.linear2 = Linear(dim_feedforward, n_feat)
 
@@ -296,7 +297,7 @@ class HybridAttention(nn.Module):
         # layer normalization
         e = self.norm3(e)
         # positionwise feed-forward
-        s = self.linear2(self.dropout(self.linear1(e)))
+        s = self.linear2(self.dropout(self.relu(self.linear1(e))))
         # residual
         e = e + self.dropout3(s)
 
