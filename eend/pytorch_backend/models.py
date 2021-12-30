@@ -15,6 +15,7 @@ from torch.nn import MultiheadAttention
 from torch.nn import Dropout
 from torch.nn import Linear
 from torch.nn import ReLU
+from torch.nn import LayerNorm
 
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim import Optimizer
@@ -231,7 +232,7 @@ class MultiHeadedAttention(nn.Module):
         p_attn = self.dropout(self.attn)
         x = torch.matmul(p_attn, v)  # (batch, head, time1, d_k)
         x = x.transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k)  # (batch, time1, d_model)
-        return self.linear_out(x), self.attn  # (batch, time1, d_model)
+        return self.linear_out(x)  # (batch, time1, d_model)
 
 
 class HybridAttention(nn.Module):
@@ -252,7 +253,7 @@ class HybridAttention(nn.Module):
         self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
         
         # Implementation of Feedforward model
-        self.linear1 = ReLU(n_feat, dim_feedforward) # used relu as in hitachi-speech
+        self.linear1 = Linear(n_feat, dim_feedforward) # used relu as in hitachi-speech
         self.dropout = Dropout(dropout_rate)
         self.linear2 = Linear(dim_feedforward, n_feat)
 
@@ -281,7 +282,7 @@ class HybridAttention(nn.Module):
         # layer normalization
         e = self.norm1(e)
         # self-attention
-        s = self.self_att(e, mask)
+        s = self.self_att(e, e, e, mask)
         # residual
         e = e + self.dropout1(s)
 
@@ -325,7 +326,7 @@ class TransformerModel(nn.Module):
 
         self.src_mask = None
         self.encoder = nn.Linear(in_size, n_units)
-        self.encoder_norm = nn.LayerNorm(n_units)
+        # self.encoder_norm = nn.LayerNorm(n_units)
         if self.has_pos:
             self.pos_encoder = PositionalEncoding(n_units, dropout)
         # encoder_layers = TransformerEncoderLayer(n_units, n_heads, dim_feedforward, dropout)
