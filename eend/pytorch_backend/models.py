@@ -4,11 +4,18 @@
 
 import numpy as np
 import math
+import copy
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
+from torch.nn import ModuleList
+from torch.nn import MultiheadAttention
+from torch.nn import Dropout
+from torch.nn import Linear
+from torch.nn import ReLU
+from torch.nn import LayerNorm
 
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim import Optimizer
@@ -128,9 +135,8 @@ class LocalDenseSynthesizerAttention(nn.Module):
     :param float dropout_rate: dropout rate
     :param int context_size: context size
     :param bool use_bias: use bias term in linear layers
-
     """
-    def __init__(self, n_head, n_feat, dropout_rate, context_size=95, use_bias=False):
+    def __init__(self, n_head, n_feat, dropout_rate, context_size=160, use_bias=False):
         super().__init__()
         assert n_feat % n_head == 0
         # We assume d_v always equals d_k
@@ -225,7 +231,8 @@ class MultiHeadedAttention(nn.Module):
         p_attn = self.dropout(self.attn)
         x = torch.matmul(p_attn, v)  # (batch, head, time1, d_k)
         x = x.transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k)  # (batch, time1, d_model)
-        return self.linear_out(x), self.attn  # (batch, time1, d_model)
+        return self.linear_out(x)  # (batch, time1, d_model)
+
 
 class HybridAttention(nn.Module):
     """Combination of MHSA and LDSA
@@ -235,12 +242,33 @@ class HybridAttention(nn.Module):
     :param int context_size: context size
     """
 
-    def __init__(self, n_head, n_feat, dropout_rate, context_size=95):
+    def __init__(self, n_head, n_feat, dropout_rate, dim_feedforward, context_size=160):
         super(HybridAttention, self).__init__()
-        self.dot_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
+        # self.dot_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
+        # self.dot_att = TransformerEncoderLayer(n_feat, n_head, dim_feedforward, dropout_rate)
+        
+        # Attention modules
+        self.self_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
         self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
+        
+        # Implementation of Position-wise Feed-Forward model
+        self.linear1 = Linear(n_feat, dim_feedforward) 
+        self.relu = ReLU()
+        self.dropout = Dropout(dropout_rate)
+        self.linear2 = Linear(dim_feedforward, n_feat)
 
-    def forward(self, query, key, value, mask):
+        # Normalization layers
+        self.norm1 = LayerNorm(n_feat)
+        self.norm2 = LayerNorm(n_feat)
+        self.norm3 = LayerNorm(n_feat)
+
+        # Dropout layers
+        self.dropout1 = Dropout(dropout_rate)
+        self.dropout2 = Dropout(dropout_rate)
+        self.dropout3 = Dropout(dropout_rate)
+
+
+    def forward(self, q, k, v, mask):
         """
         :param torch.Tensor query: (batch, time1, size)
         :param torch.Tensor key: (batch, time2, size)
@@ -248,14 +276,37 @@ class HybridAttention(nn.Module):
         :param torch.Tensor mask: (batch, time1, time2)
         :return torch.Tensor: attentioned and transformed `value`
         """
-        x = self.ldsa_att(query, key, value, mask)
-        x = self.dot_att(x, x, x, mask)
-        return x
+
+        e = q
+
+        # layer normalization
+        e = self.norm1(e)
+        # self-attention
+        s = self.self_att(e, e, e, mask)
+        # residual
+        e = e + self.dropout1(s)
+
+        # layer normalization
+        e = self.norm2(e)
+        # local dense synthesizer attention
+        s = self.ldsa_att(e, e, e, mask)
+        # residual
+        e = e + self.dropout2(s)
+
+        # layer normalization
+        e = self.norm3(e)
+        # positionwise feed-forward
+        s = self.linear2(self.dropout(self.relu(self.linear1(e))))
+        # residual
+        e = e + self.dropout3(s)
+
+        # x = self.ldsa_att(query, key, value, mask)
+        # x = self.dot_att(x, mask)
+        return e
 
 class TransformerModel(nn.Module):
     def __init__(self, n_speakers, in_size, n_heads, n_units, n_layers, dim_feedforward=2048, dropout=0.5, has_pos=False):
         """ Self-attention-based diarization model.
-
         Args:
           n_speakers (int): Number of speakers in recording
           in_size (int): Dimension of input feature vector
@@ -274,13 +325,17 @@ class TransformerModel(nn.Module):
 
         self.src_mask = None
         self.encoder = nn.Linear(in_size, n_units)
-        self.encoder_norm = nn.LayerNorm(n_units)
+        # self.encoder_norm = nn.LayerNorm(n_units)
         if self.has_pos:
             self.pos_encoder = PositionalEncoding(n_units, dropout)
         # encoder_layers = TransformerEncoderLayer(n_units, n_heads, dim_feedforward, dropout)
         # self.transformer_encoder = TransformerEncoder(encoder_layers, n_layers)
-        # self.transformer_encoder = HybridAttention(n_heads, n_units, dropout)
-        self.transformer_encoder = LocalDenseSynthesizerAttention(n_heads, n_units, dropout)
+        # ldsa_layer=LocalDenseSynthesizerAttention(n_heads, n_units, dropout)
+        hybrid_layer = HybridAttention(n_heads, n_units, dropout, dim_feedforward)
+        self.transformer_encoder = ModuleList([copy.deepcopy(hybrid_layer) for i in range(n_layers)])
+        # self.transformer_encoder = HybridAttention(n_heads, n_units, dropout, dim_feedforward)
+        # self.transformer_encoder = LocalDenseSynthesizerAttention(n_heads, n_units, dropout)
+        self.norm_out = nn.LayerNorm(n_units)
         self.decoder = nn.Linear(n_units, n_speakers)
 
         self.init_weights()
@@ -311,17 +366,24 @@ class TransformerModel(nn.Module):
 
         # src: (B, T, E)
         src = self.encoder(src)
-        src = self.encoder_norm(src)
+
+        # src = self.encoder_norm(src)
+
         # src: (T, B, E)
         # src = src.transpose(0, 1)
         if self.has_pos:
             # src: (T, B, E)
             src = self.pos_encoder(src)
         # output: (T, B, E)
-        output = self.transformer_encoder(src, src, src, self.src_mask)
+        output = src
+
+        for mod in self.transformer_encoder:
+            output = mod(output, output, output, self.src_mask)
+        # output = self.transformer_encoder(src, src, src, self.src_mask)
         # output: (B, T, E)
         # output = output.transpose(0, 1)
         # output: (B, T, C)
+        output = self.norm_out(output)
         output = self.decoder(output)
 
         if activation:
@@ -353,38 +415,28 @@ class TransformerModel(nn.Module):
 
         return torch.stack(attn_weight)
 
-
 class PositionalEncoding(nn.Module):
-    """Inject some information about the relative or absolute position of the tokens
-        in the sequence. The positional encodings have the same dimension as
-        the embeddings, so that the two can be summed. Here, we use sine and cosine
-        functions of different frequencies.
-    .. math::
-        \text{PosEncoder}(pos, 2i) = sin(pos/10000^(2i/d_model))
-        \text{PosEncoder}(pos, 2i+1) = cos(pos/10000^(2i/d_model))
-        \text{where pos is the word position and i is the embed idx)
-    Args:
-        d_model: the embed dim (required).
-        dropout: the dropout value (default=0.1).
-        max_len: the max. length of the incoming sequence (default=5000).
-    Examples:
-        >>> pos_encoder = PositionalEncoding(d_model)
-    """
-    def __init__(self, d_model, dropout=0.1, max_len=5000):
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
 
+        # Compute the positional encodings once in log space.
         pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        position = torch.arange(0, max_len).unsqueeze(1).float()
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0).transpose(0, 1)
-        self.register_buffer('pe', pe)
+        pe = pe.unsqueeze(0)
+        self.register_buffer("pe", pe)
 
-    def forward(self, x):
-        # Add positional information to each time step of x
-        x = x + self.pe[:x.size(0), :]
+    def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
+        """
+        Args:
+            x: `embeddings`, shape (batch, max_len, d_model)
+        Returns:
+            `encoder input`, shape (batch, max_len, d_model)
+        """
+        x = x + self.pe[:, : x.size(1)]
         return self.dropout(x)
 
 
