@@ -126,6 +126,34 @@ def chunkwise(xs, N_l, N_c, N_r):
     xs_chunk = xs_pad[:, index].contiguous().view(bs * n_chunks, N_l + N_c + N_r, idim)
     return xs_chunk
 
+
+class MultiHeadExternalAttention(nn.Module):
+
+    def __init__(self, n_head, n_feat, S=64):
+        super().__init__()
+        self.linear_q = nn.Linear(n_feat, n_feat)
+        self.linear_out = nn.Linear(n_feat, n_feat)
+        self.mk = nn.Linear(n_feat, S, bias=False)
+        self.mv = nn.Linear(S, n_feat, bias=False)
+        self.softmax = nn.Softmax(dim=2)
+        self.d_k = n_feat // n_head
+        self.h = n_head
+
+    def forward(self, query):
+
+        n_batch = query.size(0)
+        
+        q = self.linear_q(query).view(n_batch, -1, self.h, self.d_k) # B, T, D --> B, T, H, d_k
+        q = q.transpose(1, 2)  # (B, H, T, d_k)
+
+        attn = self.mk(q) # B, H, T, S
+        attn = self.softmax(attn) # B, H, T, S
+        attn = attn/torch.sum(attn, dim=3, keepdim=True) # B, H, T, S
+        out = self.mv(attn) # B, H, T, d_k
+
+        out = out.transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k)  # B, T, D
+        return self.linear_out(x)  # B, T, D
+
     
 class LocalDenseSynthesizerAttention(nn.Module):
     """Multi-Head Local Dense Synthesizer attention layer
@@ -137,7 +165,7 @@ class LocalDenseSynthesizerAttention(nn.Module):
     :param bool use_bias: use bias term in linear layers
 
     """
-    def __init__(self, n_head, n_feat, dropout_rate, context_size=160, use_bias=False):
+    def __init__(self, n_head, n_feat, dropout_rate, context_size=63, use_bias=False):
         super().__init__()
         assert n_feat % n_head == 0
         # We assume d_v always equals d_k
@@ -243,13 +271,11 @@ class HybridAttention(nn.Module):
     :param int context_size: context size
     """
 
-    def __init__(self, n_head, n_feat, dropout_rate, dim_feedforward, context_size=160):
+    def __init__(self, n_head, n_feat, dropout_rate, dim_feedforward, context_size=63):
         super(HybridAttention, self).__init__()
-        # self.dot_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
-        # self.dot_att = TransformerEncoderLayer(n_feat, n_head, dim_feedforward, dropout_rate)
         
         # Attention modules
-        self.self_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
+        # self.self_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
         self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
         
         # Implementation of Position-wise Feed-Forward model
@@ -301,8 +327,6 @@ class HybridAttention(nn.Module):
         # residual
         e = e + self.dropout3(s)
 
-        # x = self.ldsa_att(query, key, value, mask)
-        # x = self.dot_att(x, mask)
         return e
 
 class TransformerModel(nn.Module):
