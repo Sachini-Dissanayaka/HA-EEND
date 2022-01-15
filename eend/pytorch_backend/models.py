@@ -275,7 +275,7 @@ class HybridAttention(nn.Module):
         super(HybridAttention, self).__init__()
         
         # Attention modules
-        # self.self_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
+        self.self_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
         self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
         
         # Implementation of Position-wise Feed-Forward model
