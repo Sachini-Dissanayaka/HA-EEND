@@ -137,7 +137,7 @@ class LocalDenseSynthesizerAttention(nn.Module):
     :param bool use_bias: use bias term in linear layers
 
     """
-    def __init__(self, n_head, n_feat, dropout_rate, context_size=160, use_bias=False):
+    def __init__(self, n_head, n_feat, dropout_rate, context_size=125, use_bias=False):
         super().__init__()
         assert n_feat % n_head == 0
         # We assume d_v always equals d_k
@@ -243,7 +243,7 @@ class HybridAttention(nn.Module):
     :param int context_size: context size
     """
 
-    def __init__(self, n_head, n_feat, dropout_rate, dim_feedforward, context_size=160):
+    def __init__(self, n_head, n_feat, dropout_rate, dim_feedforward, context_size=125):
         super(HybridAttention, self).__init__()
         # self.dot_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
         # self.dot_att = TransformerEncoderLayer(n_feat, n_head, dim_feedforward, dropout_rate)
@@ -280,12 +280,12 @@ class HybridAttention(nn.Module):
 
         e = q
 
-        # layer normalization
-        e = self.norm1(e)
-        # self-attention
-        s = self.self_att(e, e, e, mask)
-        # residual
-        e = e + self.dropout1(s)
+        # # layer normalization
+        # e = self.norm1(e)
+        # # self-attention
+        # s = self.self_att(e, e, e, mask)
+        # # residual
+        # e = e + self.dropout1(s)
 
         # layer normalization
         e = self.norm2(e)
