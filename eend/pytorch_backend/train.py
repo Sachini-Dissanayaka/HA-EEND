@@ -65,7 +65,7 @@ def train(args):
         )
 
     # Prepare model
-    Y, T = next(iter(train_set))
+    Y, T = next(iter(train_set)) #STFT and labels of each audio chunk
     
     if args.model_type == 'Transformer':
         model = TransformerModel(

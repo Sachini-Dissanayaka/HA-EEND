@@ -31,7 +31,7 @@ fi
 data=$(readlink -f $data)
 
 part_ok=false
-list="dev-clean test-clean train-clean-100"
+list="dev-clean test-clean train-clean-100 train-clean-360"
 for x in $list; do
   if [ "$part" == $x ]; then part_ok=true; fi
 done
