@@ -181,6 +181,33 @@ class LocalDenseSynthesizerAttention(nn.Module):
         x = x.transpose(1, 2).contiguous().view(bs, time, self.h*self.d_k)
         x = self.w_out(x)  # [B, T, d]
         return x
+    
+class MultiHeadExternalAttention(nn.Module):
+
+    def __init__(self, n_head, n_feat, S=64):
+        super().__init__()
+        self.d_k = n_feat // n_head
+        self.linear_q = nn.Linear(n_feat, n_feat)
+        self.linear_out = nn.Linear(n_feat, n_feat)
+        self.mk = nn.Linear(self.d_k, S, bias=False)
+        self.mv = nn.Linear(S, self.d_k, bias=False)
+        self.softmax = nn.Softmax(dim=2)
+        self.h = n_head
+
+    def forward(self, query):
+
+        n_batch = query.size(0)
+        
+        q = self.linear_q(query).view(n_batch, -1, self.h, self.d_k) # B, T, D --> B, T, H, d_k
+        q = q.transpose(1, 2)  # B, H, T, d_k
+
+        attn = self.mk(q) # B, H, T, S
+        attn = self.softmax(attn) # B, H, T, S
+        attn = attn/torch.sum(attn, dim=3, keepdim=True) # B, H, T, S
+        out = self.mv(attn) # B, H, T, d_k
+        out = out.transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k)  # B, T, D
+        return self.linear_out(out)  # B, T, D
+    
 
 class RelativeMultiHeadAttention(nn.Module):
     """
@@ -310,7 +337,9 @@ class MultiHeadedAttention(nn.Module):
 
 
 class HybridAttention(nn.Module):
-    """Combination of MHSA and LDSA
+    """Combinations of attention mechanisms
+       Comment out irrelevant attention blocks when executing
+       
     :param int n_head: the number of head s
     :param int n_feat: the number of features
     :param float dropout_rate: dropout rate
@@ -319,12 +348,11 @@ class HybridAttention(nn.Module):
 
     def __init__(self, n_head, n_feat, dropout_rate, dim_feedforward, context_size=15):
         super(HybridAttention, self).__init__()
-        # self.dot_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
-        # self.dot_att = TransformerEncoderLayer(n_feat, n_head, dim_feedforward, dropout_rate)
         
         # Attention modules
         self.self_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
         self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
+        self.ext_att = MultiHeadExternalAttention(n_head, n_feat)
         self.rm_att = RelativeMultiHeadAttention(n_feat,n_head,dropout_rate)
         
         # Implementation of Position-wise Feed-Forward model
@@ -337,11 +365,15 @@ class HybridAttention(nn.Module):
         self.norm1 = LayerNorm(n_feat)
         self.norm2 = LayerNorm(n_feat)
         self.norm3 = LayerNorm(n_feat)
+        self.norm4 = LayerNorm(n_feat)
+        self.norm5 = LayerNorm(n_feat)
 
         # Dropout layers
         self.dropout1 = Dropout(dropout_rate)
         self.dropout2 = Dropout(dropout_rate)
         self.dropout3 = Dropout(dropout_rate)
+        self.dropout4 = Dropout(dropout_rate)
+        self.dropout5 = Dropout(dropout_rate)
 
 
     def forward(self, q, k, v, mask):
@@ -354,37 +386,52 @@ class HybridAttention(nn.Module):
         """
 
         e = q
-
-        # # layer normalization
-        # e = self.norm1(e)
-        # # self-attention
-        # s = self.self_att(e, e, e, mask)
-        # # residual
-        # e = e + self.dropout1(s)
-
+        
+        # --- SELF ATTENTION
+        
         # layer normalization
         e = self.norm1(e)
+        # self-attention
+        s = self.self_att(e, e, e, mask)
+        # residual
+        e = e + self.dropout1(s)
+        
+        # --- EXTERNAL ATTENTION
+        
+        # layer normalization
+        e = self.norm2(e)
+        # external attention
+        s = self.ext_att(e)
+        # residual
+        e = e + self.dropout2(s)
+
+        # --- RELATIVE ATTENTION
+        
+        # layer normalization
+        e = self.norm3(e)
         # relative multi head attention
         s = self.rm_att(e, e, e, e, mask)
         # residual
-        e = e + self.dropout1(s)
+        e = e + self.dropout3(s)
 
-        # # layer normalization
-        # e = self.norm2(e)
-        # # local dense synthesizer attention
-        # s = self.ldsa_att(e, e, e, mask)
-        # # residual
-        # e = e + self.dropout2(s)
-
+        # --- LOCAL DENSE SYNTHESIZER ATTENTION
+        
         # layer normalization
-        e = self.norm3(e)
+        e = self.norm4(e)
+        # local dense synthesizer attention
+        s = self.ldsa_att(e, e, e, mask)
+        # residual
+        e = e + self.dropout4(s)
+
+        # --- POSITION-WISE FEED FORWARD
+        
+        # layer normalization
+        e = self.norm5(e)
         # positionwise feed-forward
         s = self.linear2(self.dropout(self.relu(self.linear1(e))))
         # residual
-        e = e + self.dropout3(s)
+        e = e + self.dropout5(s)
 
-        # x = self.ldsa_att(query, key, value, mask)
-        # x = self.dot_att(x, mask)
         return e
 
 class TransformerModel(nn.Module):
