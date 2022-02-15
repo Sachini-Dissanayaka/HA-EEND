@@ -369,12 +369,12 @@ class HybridAttention(nn.Module):
         # residual
         e = e + self.dropout1(s)
 
-        # # layer normalization
-        # e = self.norm2(e)
-        # # local dense synthesizer attention
-        # s = self.ldsa_att(e, e, e, mask)
-        # # residual
-        # e = e + self.dropout2(s)
+        # layer normalization
+        e = self.norm2(e)
+        # local dense synthesizer attention
+        s = self.ldsa_att(e, e, e, mask)
+        # residual
+        e = e + self.dropout2(s)
 
         # layer normalization
         e = self.norm3(e)
