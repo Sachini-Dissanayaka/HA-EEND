@@ -2,6 +2,7 @@ egs/**/data/
 egs/**/exp/
 egs/librispeech/v1/sim_rir_8k.zip
 egs/callhome/v1/sim_rir_8k.zip
+egs/sinhala-asr/v1/sim_rir_8k.zip
 egs/callhome/v1/wav
 wav/
 tools/kaldi

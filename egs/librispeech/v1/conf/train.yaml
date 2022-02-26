@@ -11,7 +11,7 @@ num_frames: 500
 num_speakers: 2
 input_transform: logmel23_mn
 optimizer: noam
-lr: 1.0
+lr: 1e-3
 context_size: 7
 subsampling: 10
 gradient_accumulation_steps: 1
