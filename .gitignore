@@ -4,6 +4,9 @@ egs/**/mfcc_hires/
 egs/librispeech/v1/sim_rir_8k.zip
 egs/callhome/v1/sim_rir_8k.zip
 egs/sinhala-asr/v1/sim_rir_8k.zip
+egs/asr-sinhala/v1/sim_rir_8k.zip
+egs/asr-sinhala/v1/0004_tdnn_stats_asr_sad_1a.tar.gz
+egs/asr-sinhala/v1/musan.tar.gz
 egs/callhome/v1/wav
 wav/
 tools/kaldi
