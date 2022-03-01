@@ -12,7 +12,7 @@ model_dir=$exp_dir/model
 train_dir=data/simu/data/sinhala_asr_tr_ns2_beta2_2000
 dev_dir=data/simu/data/sinhala_asr_cv_ns2_beta2_500
 test_dir_ch=data/eval/callhome2_spk2
-test_dir=data/simu/data/test_clean_ns2_beta2_500
+test_dir=data/simu/data/sinhala_asr_cv_ns2_beta2_500
 train_conf=$conf_dir/train.yaml
 
 train_adapt_dir=data/eval/callhome1_spk2
@@ -36,18 +36,18 @@ scoring_dir=$exp_dir/score/sinhala-asr
 
 stage=1
 
-# Training
-if [ $stage -le 1 ]; then
-    echo "Start training"
-    python /home/yoshani/HA-EEND/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
-fi
+# # Training
+# if [ $stage -le 1 ]; then
+#     echo "Start training"
+#     python /home/yoshani/HA-EEND/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
+# fi
 
-# Model averaging
-if [ $stage -le 2 ]; then
-    echo "Start model averaging"
-    ifiles=`eval echo $model_dir/transformer{91..100}.th`
-    python /home/yoshani/HA-EEND/eend/bin/model_averaging.py $init_model $ifiles
-fi
+# # Model averaging
+# if [ $stage -le 2 ]; then
+#     echo "Start model averaging"
+#     ifiles=`eval echo $model_dir/transformer{91..100}.th`
+#     python /home/yoshani/HA-EEND/eend/bin/model_averaging.py $init_model $ifiles
+# fi
 
 # # Adapting
 # if [ $stage -le 3 ]; then
