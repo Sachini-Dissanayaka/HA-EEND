@@ -44,7 +44,7 @@ simu_opts_overlap=yes
 simu_opts_num_speaker=2
 simu_opts_sil_scale=2
 simu_opts_rvb_prob=0.5
-simu_opts_num_train=2000
+simu_opts_num_train=5000
 simu_opts_min_utts=10
 simu_opts_max_utts=20
 
@@ -110,7 +110,8 @@ if [ $stage -le 0 ]; then
         awk '$4-$3>1.5{print;}' $sad_work_dir/sinhala_asr_dir_seg/segments > data/sinhala_asr_dir_seg/segments
         cp $sad_work_dir/sinhala_asr_dir_seg/{utt2spk,spk2utt} data/sinhala_asr_dir_seg
         utils/fix_data_dir.sh data/sinhala_asr_dir_seg
-        utils/subset_data_dir_tr_cv.sh data/sinhala_asr_dir_seg data/sinhala_asr_tr data/sinhala_asr_cv
+        local/subset_data_dir_tr_dev.sh data/sinhala_asr_dir_seg data/sinhala_asr_tr data/sinhala_asr_dev
+        local/subset_data_dir_dev_test.sh data/sinhala_asr_dev data/sinhala_asr_cv data/sinhala_asr_test
     fi
 fi
 
@@ -126,7 +127,7 @@ if [ $stage -le 1 ]; then
     fi
 
     for simu_opts_sil_scale in 2; do
-        for dset in sinhala_asr_tr sinhala_asr_cv; do
+        for dset in sinhala_asr_tr sinhala_asr_cv sinhala_asr_test; do
             if [ "$dset" == "sinhala_asr_tr" ]; then
                 n_mixtures=${simu_opts_num_train}
             else
