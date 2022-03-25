@@ -34,26 +34,26 @@ class CorpusConverter(object):
 
   def __init__(self, corpus):
     self.corpus = corpus
-    self.corpus_info = corpus.corpus_info.items()
+    self.corpus_info = corpus.corpus_info.items() # {utterance_id:row}
 
-  def AlSent(self):
-    """Prints out the text used in al_sent.txt file in the RM recipe."""
-    for _, rec in self.corpus_info:
-      stdout.write('%s (%s)\n' % (rec.text, rec.utterance_id))
+  # def AlSent(self):
+  #   """Prints out the text used in al_sent.txt file in the RM recipe."""
+  #   for _, rec in self.corpus_info:
+  #     stdout.write('%s (%s)\n' % (rec.text, rec.utterance_id))
 
-  def Spk2gender(self):
-    """Prints out the text used in spk2gender file in the RM recipe."""
-    spk_gender = {}
-    for _, rec in self.corpus_info:
-      if rec.session_id not in spk_gender:
-        spk_gender[rec.session_id] = rec.gender
-    for spk_id in spk_gender:
-      stdout.write('%s %s\n' % (spk_id, spk_gender[spk_id][0]))
+  # def Spk2gender(self):
+  #   """Prints out the text used in spk2gender file in the RM recipe."""
+  #   spk_gender = {}
+  #   for _, rec in self.corpus_info:
+  #     if rec.session_id not in spk_gender:
+  #       spk_gender[rec.session_id] = rec.gender
+  #   for spk_id in spk_gender:
+  #     stdout.write('%s %s\n' % (spk_id, spk_gender[spk_id][0]))
 
-  def Text(self):
-    """Prints out the text used in text file in the RM recipe."""
-    for _, rec in self.corpus_info:
-      stdout.write('%s %s\n' % (rec.utterance_id, rec.text.lower()))
+  # def Text(self):
+  #   """Prints out the text used in text file in the RM recipe."""
+  #   for _, rec in self.corpus_info:
+  #     stdout.write('%s %s\n' % (rec.utterance_id, rec.text.lower()))
 
   def Spk2utt(self):
     """Prints out the text used in spk2utt file in RM recipe."""
@@ -83,20 +83,36 @@ class CorpusConverter(object):
 
   def Wavscp(self):
     """Prints out the text used in wav.scp file in RM recipe."""
-    spk_utt = {}
-    for _, rec in self.corpus_info:
-      if rec.session_id not in spk_utt:
-        spk_utt[rec.session_id] = []
-      spk_utt[rec.session_id].append(rec.utterance_id)
+    # spk_utt = {}
+    # for _, rec in self.corpus_info:
+    #   if rec.session_id not in spk_utt:
+    #     spk_utt[rec.session_id] = []
+    #   spk_utt[rec.session_id].append(rec.utterance_id)
 
-    # Adding [-10:] in order to make sure that the order is preserved correctly
-    # in the spk2utt.pl and utt2spk.pl sorting in the utils
-    for session_id in spk_utt:
-      for utt_id in spk_utt[session_id]:
-        _, basename = utt_id.split('-')
-        path = os.path.join(self.corpus.corpus_dir, basename[:2],
-                            '%s.flac' % basename)
-        stdout.write('%s flac -cds %s |\n' % (utt_id, path))
+    # # Adding [-10:] in order to make sure that the order is preserved correctly
+    # # in the spk2utt.pl and utt2spk.pl sorting in the utils
+    # for session_id in spk_utt:
+    #   for utt_id in spk_utt[session_id]:
+    #     _, basename = utt_id.split('-')
+    #     path = os.path.join(self.corpus.corpus_dir, basename[:2],
+    #                         '%s.flac' % basename)
+    #     stdout.write('%s flac -cds %s |\n' % (utt_id, path))
+
+    recordings = []
+
+    for _, rec in self.corpus_info:
+      if rec.recording_id not in recordings:
+        recordings.append(rec.recording_id) 
+        path = os.path.join(self.corpus.corpus_dir,
+                            '%s.flac' % rec.recording_id)
+        stdout.write('%s flac -cds %s |\n' % (rec.recording_id, path))
+
+    
+  def Segments(self):
+    """Prints out the segments files"""
+    for _, rec in self.corpus_info:
+      stdout.write('%s %s %s %s\n' % (rec.utterance_id, rec.recording_id, rec.segment_begin, rec.segment_end))
+
 
   def Transcriptions(self):
     """Prints out the transcriptions, used to generate grammar file."""
@@ -134,6 +150,10 @@ def main():
                     dest='wavscp',
                     action='store_false',
                     help='Output for wac.scp file')
+  parser.add_option('--segments',
+                    dest='segments',
+                    action='store_false',
+                    help='Output for segments file')
   parser.add_option('--transcriptions',
                     dest='transcriptions',
                     action='store_false',
@@ -172,6 +192,9 @@ def main():
 
   if options.wavscp is not None:
     kaldi_converter.Wavscp()
+
+  if options.segments is not None:
+    kaldi_converter.Segments()
 
   if options.transcriptions is not None:
     kaldi_converter.Transcriptions()
