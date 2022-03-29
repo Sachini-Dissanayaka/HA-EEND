@@ -37,11 +37,10 @@ def SessionIdFromFilename(filename):
 
 Recording = collections.namedtuple(
     'Recording', [
-        'recording_id',
         'utterance_id',
         'session_id',
-        'segment_begin',
-        'segment_end',
+        'text',
+        'gender',
         ])
 
 
@@ -50,7 +49,11 @@ def ReadInfo(reader):
   for line in reader:
     line = line.rstrip('\n')
     fields = line.split('\t')
-    assert len(fields) == 5
+    assert len(fields) == 3
+    assert UTTERANCE_ID_RE.match(fields[0]) is not None
+    assert SESSION_ID_RE.match(fields[1]) is not None
+    fields.append('female')
+    fields[0] = '%s-%s' % (fields[1], fields[0])
     yield Recording._make(fields)
 
 

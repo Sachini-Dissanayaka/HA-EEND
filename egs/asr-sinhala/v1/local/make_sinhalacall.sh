@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Script which takes an rec_utt_spk_seg.tsv file and generates Kaldi style files
+# You must create rec_utt_spk_seg.tsv file yourself for own data
+
 if [ ! -d "$1" ] ; then
   echo >&2 "Usage: prep.sh CALLSINHALA1"
   exit 1
@@ -48,8 +51,8 @@ mkdir -p data/callsinhala1 data/callsinhala2
 # Test and adapt data
 #
 
-sinhala_file1=data/local/CallSinhala/callsinhala1/utt_spk_seg.tsv
-sinhala_file2=data/local/CallSinhala/callsinhala2/utt_spk_seg.tsv
+sinhala_file1=data/local/CallSinhala/callsinhala1/rec_utt_spk_seg.tsv
+sinhala_file2=data/local/CallSinhala/callsinhala2/rec_utt_spk_seg.tsv
 
 echo "Preparing callsinhala1 data, this may take a while"
 local/kaldi_converter.py -d $CALLSINHALA1 -f $sinhala_file1 --spk2utt    | sort -k1,1 > data/callsinhala1/spk2utt
