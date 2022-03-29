@@ -131,12 +131,12 @@ class MultiHeadExternalAttention(nn.Module):
 
     def __init__(self, n_head, n_feat, S=64):
         super().__init__()
+        self.d_k = n_feat // n_head
         self.linear_q = nn.Linear(n_feat, n_feat)
         self.linear_out = nn.Linear(n_feat, n_feat)
-        self.mk = nn.Linear(n_feat, S, bias=False)
-        self.mv = nn.Linear(S, n_feat, bias=False)
+        self.mk = nn.Linear(self.d_k, S, bias=False)
+        self.mv = nn.Linear(S, self.d_k, bias=False)
         self.softmax = nn.Softmax(dim=2)
-        self.d_k = n_feat // n_head
         self.h = n_head
 
     def forward(self, query):
@@ -144,15 +144,14 @@ class MultiHeadExternalAttention(nn.Module):
         n_batch = query.size(0)
         
         q = self.linear_q(query).view(n_batch, -1, self.h, self.d_k) # B, T, D --> B, T, H, d_k
-        q = q.transpose(1, 2)  # (B, H, T, d_k)
+        q = q.transpose(1, 2)  # B, H, T, d_k
 
         attn = self.mk(q) # B, H, T, S
         attn = self.softmax(attn) # B, H, T, S
         attn = attn/torch.sum(attn, dim=3, keepdim=True) # B, H, T, S
         out = self.mv(attn) # B, H, T, d_k
-
         out = out.transpose(1, 2).contiguous().view(n_batch, -1, self.h * self.d_k)  # B, T, D
-        return self.linear_out(x)  # B, T, D
+        return self.linear_out(out)  # B, T, D
 
     
 class LocalDenseSynthesizerAttention(nn.Module):
@@ -165,7 +164,7 @@ class LocalDenseSynthesizerAttention(nn.Module):
     :param bool use_bias: use bias term in linear layers
 
     """
-    def __init__(self, n_head, n_feat, dropout_rate, context_size=30, use_bias=False):
+    def __init__(self, n_head, n_feat, dropout_rate, context_size=15, use_bias=False):
         super().__init__()
         assert n_feat % n_head == 0
         # We assume d_v always equals d_k
@@ -209,6 +208,80 @@ class LocalDenseSynthesizerAttention(nn.Module):
         x = x.transpose(1, 2).contiguous().view(bs, time, self.h*self.d_k)
         x = self.w_out(x)  # [B, T, d]
         return x
+
+class RelativeMultiHeadAttention(nn.Module):
+    """
+    Multi-head attention with relative positional encoding.
+    This concept was proposed in the "Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context"
+    Args:
+        d_model (int): The dimension of model
+        num_heads (int): The number of attention heads.
+        dropout_p (float): probability of dropout
+    Inputs: query, key, value, pos_embedding, mask
+        - **query** (batch, time, dim): Tensor containing query vector
+        - **key** (batch, time, dim): Tensor containing key vector
+        - **value** (batch, time, dim): Tensor containing value vector
+        - **pos_embedding** (batch, time, dim): Positional embedding tensor
+        - **mask** (batch, 1, time2) or (batch, time1, time2): Tensor containing indices to be masked
+    Returns:
+        - **outputs**: Tensor produces by relative multi head attention module.
+    """
+    def __init__(self, d_model, num_heads, dropout_p):
+        super(RelativeMultiHeadAttention, self).__init__()
+        assert d_model % num_heads == 0, "d_model % num_heads should be zero."
+        self.d_model = d_model
+        self.d_head = int(d_model / num_heads)
+        self.num_heads = num_heads
+        self.sqrt_dim = math.sqrt(d_model)
+
+        self.query_proj = nn.Linear(d_model, d_model)
+        self.key_proj = nn.Linear(d_model, d_model)
+        self.value_proj = nn.Linear(d_model, d_model)
+        self.pos_proj = nn.Linear(d_model, d_model, bias=False)
+
+        self.dropout = nn.Dropout(p=dropout_p)
+        self.u_bias = nn.Parameter(torch.Tensor(self.num_heads, self.d_head))
+        self.v_bias = nn.Parameter(torch.Tensor(self.num_heads, self.d_head))
+        torch.nn.init.xavier_uniform_(self.u_bias)
+        torch.nn.init.xavier_uniform_(self.v_bias)
+
+        self.out_proj = nn.Linear(d_model, d_model)
+
+    def forward(self, query, key, value, pos_embedding, mask):
+        batch_size = value.size(0)
+
+        query = self.query_proj(query).view(batch_size, -1, self.num_heads, self.d_head)
+        key = self.key_proj(key).view(batch_size, -1, self.num_heads, self.d_head).permute(0, 2, 1, 3)
+        value = self.value_proj(value).view(batch_size, -1, self.num_heads, self.d_head).permute(0, 2, 1, 3)
+        pos_embedding = self.pos_proj(pos_embedding).view(batch_size, -1, self.num_heads, self.d_head)
+
+        content_score = torch.matmul((query + self.u_bias).transpose(1, 2), key.transpose(2, 3))
+        pos_score = torch.matmul((query + self.v_bias).transpose(1, 2), pos_embedding.permute(0, 2, 3, 1))
+        pos_score = self._compute_relative_positional_encoding(pos_score)
+
+        score = (content_score + pos_score) / self.sqrt_dim
+
+        if mask is not None:
+            mask = mask.unsqueeze(1)
+            score.masked_fill_(mask, -1e9)
+
+        attn = F.softmax(score, -1)
+        attn = self.dropout(attn)
+
+        context = torch.matmul(attn, value).transpose(1, 2)
+        context = context.contiguous().view(batch_size, -1, self.d_model)
+
+        return self.out_proj(context)
+
+    def _compute_relative_positional_encoding(self, pos_score):
+        batch_size, num_heads, seq_length1, seq_length2 = pos_score.size()
+        zeros = pos_score.new_zeros(batch_size, num_heads, seq_length1, 1)
+        padded_pos_score = torch.cat([zeros, pos_score], dim=-1)
+
+        padded_pos_score = padded_pos_score.view(batch_size, num_heads, seq_length2 + 1, seq_length1)
+        pos_score = padded_pos_score[:, :, 1:].view_as(pos_score)
+
+        return pos_score
 
 class MultiHeadedAttention(nn.Module):
     """Multi-Head Attention layer
@@ -271,12 +344,14 @@ class HybridAttention(nn.Module):
     :param int context_size: context size
     """
 
-    def __init__(self, n_head, n_feat, dropout_rate, dim_feedforward, context_size=30):
+    def __init__(self, n_head, n_feat, dropout_rate, dim_feedforward, context_size=15):
         super(HybridAttention, self).__init__()
         
         # Attention modules
         self.self_att = MultiHeadedAttention(n_head, n_feat, dropout_rate)
-        # self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
+        self.ldsa_att = LocalDenseSynthesizerAttention(n_head, n_feat, dropout_rate, context_size)
+        # self.ext_att = MultiHeadExternalAttention(n_head, n_feat)
+        # self.rm_att = RelativeMultiHeadAttention(n_feat,n_head,dropout_rate)
         
         # Implementation of Position-wise Feed-Forward model
         self.linear1 = Linear(n_feat, dim_feedforward) 
@@ -288,11 +363,15 @@ class HybridAttention(nn.Module):
         self.norm1 = LayerNorm(n_feat)
         self.norm2 = LayerNorm(n_feat)
         self.norm3 = LayerNorm(n_feat)
+        self.norm4 = LayerNorm(n_feat)
+        self.norm5 = LayerNorm(n_feat)
 
         # Dropout layers
         self.dropout1 = Dropout(dropout_rate)
         self.dropout2 = Dropout(dropout_rate)
         self.dropout3 = Dropout(dropout_rate)
+        self.dropout4 = Dropout(dropout_rate)
+        self.dropout5 = Dropout(dropout_rate)
 
 
     def forward(self, q, k, v, mask):
@@ -305,27 +384,51 @@ class HybridAttention(nn.Module):
         """
 
         e = q
-
+        
+        # --- SELF ATTENTION
+        
         # layer normalization
         e = self.norm1(e)
         # self-attention
         s = self.self_att(e, e, e, mask)
         # residual
         e = e + self.dropout1(s)
-
+        
+        # --- EXTERNAL ATTENTION
+        
         # # layer normalization
         # e = self.norm2(e)
-        # # local dense synthesizer attention
-        # s = self.ldsa_att(e, e, e, mask)
+        # # external attention
+        # s = self.ext_att(e)
         # # residual
         # e = e + self.dropout2(s)
 
+        # --- RELATIVE ATTENTION
+        
+        # # layer normalization
+        # e = self.norm3(e)
+        # # relative multi head attention
+        # s = self.rm_att(e, e, e, e, mask)
+        # # residual
+        # e = e + self.dropout3(s)
+
+        # --- LOCAL DENSE SYNTHESIZER ATTENTION
+        
         # layer normalization
-        e = self.norm3(e)
+        e = self.norm4(e)
+        # local dense synthesizer attention
+        s = self.ldsa_att(e, e, e, mask)
+        # residual
+        e = e + self.dropout4(s)
+
+        # --- POSITION-WISE FEED FORWARD
+        
+        # layer normalization
+        e = self.norm5(e)
         # positionwise feed-forward
         s = self.linear2(self.dropout(self.relu(self.linear1(e))))
         # residual
-        e = e + self.dropout3(s)
+        e = e + self.dropout5(s)
 
         return e
 
