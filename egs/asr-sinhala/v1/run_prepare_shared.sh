@@ -1,30 +1,26 @@
 #!/bin/bash
 
-# Copyright 2019 Hitachi, Ltd. (author: Yusuke Fujita)
-# Licensed under the MIT license.
 #
 # This script prepares kaldi-style data sets shared with different experiments
 #   - data/xxxx
-#     callhome, sre, swb2, and swb_cellular datasets
+#     callsinhala (collected by Team Systers@cse.mrt.ac.lk) and sinhala-asr datasets
 #   - data/simu_${simu_outputs}
 #     simulation mixtures generated with various options
 
 stage=0
 
 # Modify corpus directories
-#  - callhome_dir
-#    CALLHOME (LDC2001S97)
-#  - swb2_phase1_train
-#    Switchboard-2 Phase 1 (LDC98S75)
+#  - callsinhala1 (adapt)
+#  - callsinhala2 (test)
+#  - sinhala-asr (https://openslr.org/52/)
 #  - data_root
-#    LDC99S79, LDC2002S06, LDC2001S13, LDC2004S07,
-#    LDC2006S44, LDC2011S01, LDC2011S04, LDC2011S09,
-#    LDC2011S10, LDC2012S01, LDC2011S05, LDC2011S08
 #  - musan_root
 #    MUSAN corpus (https://www.openslr.org/17/)
-# callhome_dir=/export/corpora/NIST/LDC2001S97
+
 data_root=$PWD/data/local/SinhalaASR
 sinhala_asr_dir=$PWD/data/sinhala_asr_train
+callsinhala1=$PWD/data/local/CallSinhala/callsinhala1
+callsinhala2=$PWD/data/local/CallSinhala/callsinhala2
 musan_root=$PWD/data/musan_root
 # Modify simulated data storage area.
 # This script distributes simulated data under these directories
@@ -60,10 +56,25 @@ if [ $stage -le 0 ]; then
         local/make_sinhala_asr.sh $data_root 
     fi
 
+    # Prepare a collection of CallSinhala data. This will be used to adapt and test,
+    if ! validate_data_dir.sh --no-text --no-feats data/callsinhala2; then
+        local/make_sinhalacall.sh $callsinhala1 $callsinhala2 
+        utils/data/resample_data_dir.sh 8000 data/callsinhala1
+        utils/data/resample_data_dir.sh 8000 data/callsinhala2
+        steps/segmentation/convert_utt2spk_and_segments_to_rttm.py data/callsinhala1/utt2spk data/callsinhala1/segments \
+            data/callsinhala1/rttm
+        utils/data/get_reco2dur.sh data/callsinhala1
+
+        steps/segmentation/convert_utt2spk_and_segments_to_rttm.py data/callsinhala2/utt2spk data/callsinhala2/segments \
+            data/callsinhala2/rttm
+        utils/data/get_reco2dur.sh data/callsinhala2
+    fi
+
+    # prepare musan noise data
     if [ ! -d data/musan_root ]; then
         # local/download_musan.sh
         tar xzf musan.tar.gz
-        # rm -f "musan.tar.gz"
+        rm -f "musan.tar.gz"
     fi
 
     # musan data. "back-ground
@@ -87,9 +98,8 @@ if [ $stage -le 0 ]; then
         awk '{print $1, $1}' data/simu_rirs_8k/wav.scp > data/simu_rirs_8k/utt2spk
         utils/fix_data_dir.sh data/simu_rirs_8k
     fi
-    # Automatic segmentation using pretrained SAD model
-    #     it will take one day using 30 CPU jobs:
-    #     make_mfcc: 1 hour, compute_output: 18 hours, decode: 0.5 hours
+
+    # Automatic segmentation using pretrained SAD model since time annotations are missing in Sinhala ASR
     sad_nnet_dir=exp/segmentation_1a/tdnn_stats_asr_sad_1a
     sad_work_dir=exp/segmentation_1a/tdnn_stats_asr_sad_1a
     if ! validate_data_dir.sh --no-text $sad_work_dir/sinhala_asr_dir_seg; then
@@ -115,6 +125,7 @@ if [ $stage -le 0 ]; then
     fi
 fi
 
+# simulate sinhala data
 simudir=data/simu
 if [ $stage -le 1 ]; then
     echo "simulation of mixture"
