@@ -389,21 +389,21 @@ class HybridAttention(nn.Module):
         
         # --- SELF ATTENTION
         
-        # layer normalization
-        e = self.norm1(e)
-        # self-attention
-        s = self.self_att(e, e, e, mask)
-        # residual
-        e = e + self.dropout1(s)
+        # # layer normalization
+        # e = self.norm1(e)
+        # # self-attention
+        # s = self.self_att(e, e, e, mask)
+        # # residual
+        # e = e + self.dropout1(s)
         
-        # --- EXTERNAL ATTENTION
+        # # --- EXTERNAL ATTENTION
         
-        # layer normalization
-        e = self.norm2(e)
-        # external attention
-        s = self.ext_att(e)
-        # residual
-        e = e + self.dropout2(s)
+        # # layer normalization
+        # e = self.norm2(e)
+        # # external attention
+        # s = self.ext_att(e)
+        # # residual
+        # e = e + self.dropout2(s)
 
         # --- RELATIVE ATTENTION
         

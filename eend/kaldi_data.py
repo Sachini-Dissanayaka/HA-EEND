@@ -146,16 +146,16 @@ def extract_segments(wavs, segments=None):
 class KaldiData:
     def __init__(self, data_dir):
         self.data_dir = data_dir
-        self.segments = load_segments_rechash(
-                os.path.join(self.data_dir, 'segments'))
-        self.utt2spk = load_utt2spk(
-                os.path.join(self.data_dir, 'utt2spk'))
+        # self.segments = load_segments_rechash(
+        #         os.path.join(self.data_dir, 'segments'))
+        # self.utt2spk = load_utt2spk(
+        #         os.path.join(self.data_dir, 'utt2spk'))
         self.wavs = load_wav_scp(
                 os.path.join(self.data_dir, 'wav.scp'))
-        self.reco2dur = load_reco2dur(
-                os.path.join(self.data_dir, 'reco2dur'))
-        self.spk2utt = load_spk2utt(
-                os.path.join(self.data_dir, 'spk2utt'))
+        # self.reco2dur = load_reco2dur(
+        #         os.path.join(self.data_dir, 'reco2dur'))
+        # self.spk2utt = load_spk2utt(
+        #         os.path.join(self.data_dir, 'spk2utt'))
 
     def load_wav(self, recid, start=0, end=None):
         data, rate = load_wav(
