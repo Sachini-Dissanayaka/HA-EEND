@@ -39,27 +39,27 @@ stage=1
 # Training
 if [ $stage -le 1 ]; then
     echo "Start training"
-    python /home/sachini/HA-EEND/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
+    python ~/HA-EEND/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
 fi
 
 # Model averaging
 if [ $stage -le 2 ]; then
     echo "Start model averaging"
     ifiles=`eval echo $model_dir/transformer{91..100}.th`
-    python /home/sachini/HA-EEND/eend/bin/model_averaging.py $init_model $ifiles
+    python ~/HA-EEND/eend/bin/model_averaging.py $init_model $ifiles
 fi
 
 # Adapting
 if [ $stage -le 3 ]; then
     echo "Start adapting"
-    python /home/sachini/HA-EEND/eend/bin/train.py -c $adapt_conf $train_adapt_dir $dev_adapt_dir $model_adapt_dir --initmodel $init_model
+    python ~/HA-EEND/eend/bin/train.py -c $adapt_conf $train_adapt_dir $dev_adapt_dir $model_adapt_dir --initmodel $init_model
 fi
 
 # Model averaging
 if [ $stage -le 3 ]; then
     echo "Start model averaging"
     ifiles=`eval echo $model_adapt_dir/transformer{91..100}.th`
-    python /home/sachini/HA-EEND/eend/bin/model_averaging.py $test_model_ch $ifiles
+    python ~/HA-EEND/eend/bin/model_averaging.py $test_model_ch $ifiles
 fi
 
 # --- LibriSpeech
@@ -67,7 +67,7 @@ fi
 # Inferring
 if [ $stage -le 3 ]; then
     echo "Start inferring"
-    python /home/sachini/HA-EEND/eend/bin/infer.py -c $infer_conf $test_dir $test_model $infer_out_dir
+    python ~/HA-EEND/eend/bin/infer.py -c $infer_conf $test_dir $test_model $infer_out_dir
 fi
 
 # Scoring
@@ -78,7 +78,7 @@ if [ $stage -le 4 ]; then
 	find $infer_out_dir -iname "*.h5" > $work/file_list
 	for med in 1 11; do
 	for th in 0.3 0.4 0.5 0.6 0.7; do
-	python /home/sachini/HA-EEND/eend/bin/make_rttm.py --median=$med --threshold=$th \
+	python ~/HA-EEND/eend/bin/make_rttm.py --median=$med --threshold=$th \
 		--frame_shift=80 --subsampling=10 --sampling_rate=8000 \
 		$work/file_list $scoring_dir/hyp_${th}_$med.rttm
 	md-eval.pl -c 0.25 \
@@ -97,7 +97,7 @@ fi
 # Inferring
 if [ $stage -le 6 ]; then
     echo "Start inferring"
-    python /home/sachini/HA-EEND/eend/bin/infer.py -c $infer_conf $test_dir_ch $test_model_ch $infer_out_dir_ch
+    python ~/HA-EEND/eend/bin/infer.py -c $infer_conf $test_dir_ch $test_model_ch $infer_out_dir_ch
 fi
 
 # Scoring
@@ -108,7 +108,7 @@ if [ $stage -le 7 ]; then
 	find $infer_out_dir_ch -iname "*.h5" > $work_ch/file_list
 	for med in 1 11; do
 	for th in 0.3 0.4 0.5 0.6 0.7; do
-	python /home/sachini/HA-EEND/eend/bin/make_rttm.py --median=$med --threshold=$th \
+	python ~/HA-EEND/eend/bin/make_rttm.py --median=$med --threshold=$th \
 		--frame_shift=80 --subsampling=10 --sampling_rate=8000 \
 		$work_ch/file_list $scoring_dir_ch/hyp_${th}_$med.rttm
 	md-eval.pl -c 0.25 \
