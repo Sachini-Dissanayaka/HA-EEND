@@ -71,7 +71,7 @@ make
 ```
 export PYTHONPATH="${PYTHONPATH}:~/HA-EEND/"
 export PATH=~/HA-EEND/tools/miniconda3/envs/eend/bin/:$PATH
-export PATH=~/HA-EEND/eend/bin:/home/yoshani/HA-EEND/utils:$PATH
+export PATH=~/HA-EEND/eend/bin:~/HA-EEND/utils:$PATH
 export KALDI_ROOT=~/HA-EEND/tools/kaldi
 export PATH=~/HA-EEND/utils/:$KALDI_ROOT/tools/openfst/bin:$KALDI_ROOT/tools/sph2pipe_v2.5:$KALDI_ROOT/tools/sctk/bin:~/HA-EEND:$PATH
 ```
