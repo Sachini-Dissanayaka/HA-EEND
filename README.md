@@ -10,31 +10,93 @@ The repository is largely references code from the following sources:
 - [multihead-LDSA](https://github.com/mlxu995/multihead-LDSA)
 - [ASR Recipes](https://github.com/google/asr-recipes) licensed under an [Apache License, Version 2.0.](https://github.com/google/asr-recipes/blob/master/LICENSE)
 
-## Authors
+## Installing requirements and Setting-up
 
-<table border="0">
- <tr>
-   <td></td>
-    <td><b style="font-size:30px">Yoshani Ranaweera</b></td>
-    <td><b style="font-size:30px">Sachini Dissanayaka</b></td>
-    <td><b style="font-size:30px">Anjalee Sudasinghe</b></td>
- </tr>
-  <tr>
-    <td>Profile</td>
-    <td>https://github.com/Yoshani</td>
-    <td>https://github.com/Sachini-Dissanayaka</td>
-    <td>https://github.com/anjaleeps</td>
-  </tr>
-  <tr>
-    <td>Email</td>
-    <td>yoshani.ranaweera.17@cse.mrt.ac.lk</td>
-    <td>sachinidissanayaka.17@cse.mrt.ac.lk</td>
-    <td>anjaleeps.17@cse.mrt.ac.lk</td>
-  </tr>
-  <tr>
-    <td>LinkedIn</td>
-    <td>https://www.linkedin.com/in/yoshani-ranaweera/</td>
-    <td>https://www.linkedin.com/in/sachini-dissanayaka/</td>
-    <td>https://www.linkedin.com/in/anjaleesudasinghe/</td>
-  </tr>
-</table>
+The research was conducted in the following environment <br>
+- OS : Ubuntu 18.04 LTS
+- Memory: 
+  - For single multi-head layered encoder blocks: 8 CPUs, 32 GB RAM
+  - For double multi-head layered encoder blocks: 16 CPUs, 64 GB RAM
+- Storage : 150-200 GB
+
+The following requirements are to be installed 
+- Anaconda
+- CUDA Toolkit
+- SoX tool
+
+Follow the following steps to install all the requirements and get going on the project. <br>
+
+#### 1. Install Anaconda
+
+``` 
+sudo apt-get update 
+sudo apt-get install bzip2 libxml2-dev -y 
+wget https://repo.anaconda.com/archive/Anaconda3-2020.11-Linux-x86_64.sh (use Anaconda latest version)
+bash Anaconda3-2020.11-Linux-x86_64.sh
+rm Anaconda3-2020.11-Linux-x86_64.sh
+source .bashrc 
+```
+
+#### 2. Install the required libraries
+
+``` 
+sudo apt install nvidia-cuda-toolkit -y
+sudo apt-get install unzip gfortran python2.7 -y
+sudo apt-get install automake autoconf sox libtool subversion -y
+sudo apt-get update -y
+sudo apt-get install -y flac
+``` 
+
+#### 3. Clone the Git repository
+
+``` 
+git clone https://github.com/Sachini-Dissanayaka/HA-EEND.git 
+```
+
+#### 4. Install Kaldi and Python environment
+
+``` 
+cd HA-EEND/tools/ 
+make 
+```
+
+#### 5. Install Pytorch
+
+```
+~/HA-EEND/tools/miniconda3/envs/eend/bin/pip install torch==1.6.0+cu101 torchvision==0.7.0+cu101 -f https://download.pytorch.org/whl/torch_stable.html
+```
+
+#### 6. Add paths
+
+```
+export PYTHONPATH="${PYTHONPATH}:~/HA-EEND/"
+export PATH=~/HA-EEND/tools/miniconda3/envs/eend/bin/:$PATH
+export PATH=~/HA-EEND/eend/bin:/home/yoshani/HA-EEND/utils:$PATH
+export KALDI_ROOT=~/HA-EEND/tools/kaldi
+export PATH=~/HA-EEND/utils/:$KALDI_ROOT/tools/openfst/bin:$KALDI_ROOT/tools/sph2pipe_v2.5:$KALDI_ROOT/tools/sctk/bin:~/HA-EEND:$PATH
+```
+
+## Configuration
+Modify ```egs/librispeech/v1/cmd.sh``` according to your job schedular.
+
+## Data Preparation
+
+Download the Librispeech dataset from https://www.openslr.org/12 <br>
+Move the file into a folder with path egs/librispeech/v1/data/local <br>
+Run the following commands
+```
+cd egs/librispeech/v1
+./run_prepare_shared.sh
+```
+
+## Run training, inference, and scoring
+```
+./run.sh
+```
+
+## Reach us for any further clarifications
+
+ - Yoshani Ranaweera : yoshani.ranaweera.17@cse.mrt.ac.lk
+ - Sachini Dissanayaka : sachinidissanayaka.17@cse.mrt.ac.lk
+ - Anjalee Sudasinghe : anjaleeps.17@cse.mrt.ac.lk
+
