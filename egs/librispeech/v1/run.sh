@@ -36,9 +36,9 @@ model_dir=$exp_dir/model
 
 #--------------------Demo - paths-------------------------------
 infer_conf=$conf_dir/infer.yaml
-test_dir=data/simu/data/test_clean_ns2_beta2_500
+test_dir=data/simu/data/real
 test_model=$model_dir/avg.th
-infer_out_dir=$exp_dir/infer/librispeech
+infer_out_dir=$exp_dir/infer/real
 
 stage=1
 
