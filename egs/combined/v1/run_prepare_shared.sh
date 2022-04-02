@@ -41,7 +41,8 @@ simu_opts_overlap=yes
 simu_opts_num_speaker=2
 simu_opts_sil_scale=2
 simu_opts_rvb_prob=0.5
-simu_opts_num_train=4000
+simu_opts_num_train_eng=1000
+simu_opts_num_train_si=3200
 simu_opts_min_utts=10
 simu_opts_max_utts=20
 
@@ -62,6 +63,11 @@ if [ $stage -le 0 ]; then
         local/download_and_untar.sh data/local train-clean-100   
         local/data_prep.sh data/local/LibriSpeech/train-clean-100 data/train_clean_100
         touch data/train_clean_100/.done
+    fi
+    if [ ! -f data/train_clean_360/.done ]; then
+        local/download_and_untar.sh data/local train-clean-360
+        local/data_prep.sh data/local/LibriSpeech/train-clean-360 data/train_clean_360 || exit
+        touch data/train_clean_360/.done
     fi
 
      # Sinhala ASR
@@ -91,20 +97,6 @@ if [ $stage -le 0 ]; then
         cp $sad_work_dir/sinhala_asr_dir_seg/{utt2spk,spk2utt} data/sinhala_asr_dir_seg
         utils/fix_data_dir.sh data/sinhala_asr_dir_seg
         local/subset_data_dir_tr_dev.sh data/sinhala_asr_dir_seg data/sinhala_asr_tr data/sinhala_asr_dev
-    fi
-
-    # Prepare a collection of Librispeech and SinhalaASR combined train data. This will be used to train,
-    if ! validate_data_dir.sh --no-text --no-feats data/lib_sin_comb_tr; then
-        
-        # Combine train_clean_100 and sinhala_asr_tr
-        utils/combine_data.sh data/lib_sin_comb_tr data/train_clean_100 data/sinhala_asr_tr
-    fi
-
-    # Prepare a collection of Librispeech and SinhalaASR combined train data. This will be used to validate,
-    if ! validate_data_dir.sh --no-text --no-feats data/lib_sin_comb_cv; then
-        
-        # Combine dev_clean and sinhala_asr_dev
-        utils/combine_data.sh data/lib_sin_comb_cv data/dev_clean data/sinhala_asr_dev
     fi
 
     # musan
@@ -201,9 +193,9 @@ if [ $stage -le 3 ]; then
     fi
 fi
 
-# simulate combined data
+# simulate librispeech data
 simudir=data/simu
-if [ $stage -le 1 ]; then
+if [ $stage -le 4 ]; then
     echo "simulation of mixture"
     mkdir -p $simudir/.work
     random_mixture_cmd=random_mixture_nooverlap.py
@@ -214,11 +206,67 @@ if [ $stage -le 1 ]; then
     fi
 
     for simu_opts_sil_scale in 2; do
-        for dset in lib_sin_comb_tr lib_sin_comb_cv; do
-            if [ "$dset" == "lib_sin_comb_tr" ]; then
-                n_mixtures=${simu_opts_num_train}
+        for dset in train_clean_100 dev_clean; do
+            if [ "$dset" == "train_clean_100" ]; then
+                n_mixtures=${simu_opts_num_train_eng}
             else
-                n_mixtures=500
+                n_mixtures=150
+            fi
+            simuid=${dset}_ns${simu_opts_num_speaker}_beta${simu_opts_sil_scale}_${n_mixtures}
+            # check if you have the simulation
+            if ! validate_data_dir.sh --no-text --no-feats $simudir/data/$simuid; then
+                # random mixture generation
+                $train_cmd $simudir/.work/random_mixture_$simuid.log \
+                    $random_mixture_cmd --n_speakers $simu_opts_num_speaker --n_mixtures $n_mixtures \
+                    --speech_rvb_probability $simu_opts_rvb_prob \
+                    --sil_scale $simu_opts_sil_scale \
+                    data/$dset data/musan_bgnoise data/simu_rirs_8k \
+                    \> $simudir/.work/mixture_$simuid.scp
+                nj=100
+                mkdir -p $simudir/wav/$simuid
+                # distribute simulated data to $simu_actual_dir
+                split_scps=
+                for n in $(seq $nj); do
+                    split_scps="$split_scps $simudir/.work/mixture_$simuid.$n.scp"
+                    mkdir -p $simudir/.work/data_$simuid.$n
+                    actual=${simu_actual_dirs[($n-1)%${#simu_actual_dirs[@]}]}/$simudir/wav/$simuid/$n
+                    mkdir -p $actual
+                    ln -nfs $actual $simudir/wav/$simuid/$n
+                done
+                utils/split_scp.pl $simudir/.work/mixture_$simuid.scp $split_scps || exit 1
+
+                $simu_cmd --max-jobs-run 32 JOB=1:$nj $simudir/.work/make_mixture_$simuid.JOB.log \
+                    $make_mixture_cmd --rate=8000 \
+                    $simudir/.work/mixture_$simuid.JOB.scp \
+                    $simudir/.work/data_$simuid.JOB $simudir/wav/$simuid/JOB
+                utils/combine_data.sh $simudir/data/$simuid $simudir/.work/data_$simuid.*
+                steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
+                    $simudir/data/$simuid/utt2spk $simudir/data/$simuid/segments \
+                    $simudir/data/$simuid/rttm
+                utils/data/get_reco2dur.sh $simudir/data/$simuid
+            fi
+        done
+    done
+fi
+
+# simulate sinhala data
+simudir=data/simu
+if [ $stage -le 5 ]; then
+    echo "simulation of mixture"
+    mkdir -p $simudir/.work
+    random_mixture_cmd=random_mixture_nooverlap.py
+    make_mixture_cmd=make_mixture_nooverlap.py
+    if [ "$simu_opts_overlap" == "yes" ]; then
+        random_mixture_cmd=random_mixture.py
+        make_mixture_cmd=make_mixture.py
+    fi
+
+    for simu_opts_sil_scale in 2; do
+        for dset in sinhala_asr_tr sinhala_asr_dev; do
+            if [ "$dset" == "sinhala_asr_tr" ]; then
+                n_mixtures=${simu_opts_num_train_si}
+            else
+                n_mixtures=450
             fi
             simuid=${dset}_ns${simu_opts_num_speaker}_beta${simu_opts_sil_scale}_${n_mixtures}
             # check if you have the simulation
@@ -255,4 +303,21 @@ if [ $stage -le 1 ]; then
             fi
         done
     done 
+fi
+
+# combine simulated data
+if [ $stage -le 6 ]; then
+    # Prepare a collection of combined train data. This will be used to train,
+    if ! validate_data_dir.sh --no-text --no-feats data/eng_sin_comb_simu_tr; then
+        # Combine train_clean_100 and sinhala_asr_tr
+        utils/combine_data.sh data/eng_sin_comb_simu_tr \
+         data/simu/data/train_clean_100_ns2_beta2_1000 data/simu/data/sinhala_asr_tr_ns2_beta2_3200
+    fi
+
+    # Prepare a collection of combined dev data. This will be used to validate,
+    if ! validate_data_dir.sh --no-text --no-feats data/eng_sin_comb_simu_cv; then       
+        # Combine dev_clean and sinhala_asr_dev
+        utils/combine_data.sh data/eng_sin_comb_simu_cv \
+         data/simu/data/dev_clean_ns2_beta2_150 data/simu/data/sinhala_asr_dev_ns2_beta2_450
+    fi
 fi
