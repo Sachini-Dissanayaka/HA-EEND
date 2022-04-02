@@ -9,9 +9,8 @@ conf_dir=conf
 
 model_dir=$exp_dir/model
 
-train_dir=data/simu/data/sinhala_asr_tr_ns2_beta2_5000
-dev_dir=data/simu/data/sinhala_asr_cv_ns2_beta2_500
-test_dir=data/simu/data/sinhala_asr_test_ns2_beta2_500
+train_dir=data/eng_sin_comb_simu_tr
+dev_dir=data/eng_sin_comb_simu_cv
 test_dir_cs=data/callsinhala2
 test_dir_ch=data/eval/callhome2_spk2
 train_conf=$conf_dir/train.yaml
@@ -82,36 +81,6 @@ if [ $stage -le 3 ]; then
     echo "Start model averaging"
     ifiles=`eval echo $model_adapt_dir_ch/transformer{91..100}.th`
     python ~/HA-EEND/eend/bin/model_averaging.py $test_model_ch $ifiles
-fi
-
-# --- Sinhala ASR
-
-Inferring
-if [ $stage -le 3 ]; then
-    echo "Start inferring"
-    python ~/HA-EEND/eend/bin/infer.py -c $infer_conf $test_dir $test_model $infer_out_dir
-fi
-
-# Scoring
-if [ $stage -le 4 ]; then
-    echo "Start scoring"
-    mkdir -p $work
-    mkdir -p $scoring_dir
-	find $infer_out_dir -iname "*.h5" > $work/file_list
-	for med in 1 11; do
-	for th in 0.3 0.4 0.5 0.6 0.7; do
-	python ~/HA-EEND/eend/bin/make_rttm.py --median=$med --threshold=$th \
-		--frame_shift=80 --subsampling=10 --sampling_rate=8000 \
-		$work/file_list $scoring_dir/hyp_${th}_$med.rttm
-	md-eval.pl -c 0.25 \
-		-r $test_dir/rttm \
-		-s $scoring_dir/hyp_${th}_$med.rttm > $scoring_dir/result_th${th}_med${med}_collar0.25 2>/dev/null || exit
-	done
-	done
-fi
-
-if [ $stage -le 5 ]; then
-    best_score.sh $scoring_dir
 fi
 
 # --- CALLSINHALA

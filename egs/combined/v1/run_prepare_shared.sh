@@ -64,11 +64,6 @@ if [ $stage -le 0 ]; then
         local/data_prep.sh data/local/LibriSpeech/train-clean-100 data/train_clean_100
         touch data/train_clean_100/.done
     fi
-    if [ ! -f data/train_clean_360/.done ]; then
-        local/download_and_untar.sh data/local train-clean-360
-        local/data_prep.sh data/local/LibriSpeech/train-clean-360 data/train_clean_360 || exit
-        touch data/train_clean_360/.done
-    fi
 
      # Sinhala ASR
     if ! validate_data_dir.sh --no-text --no-feats data/sinhala_asr_full; then
