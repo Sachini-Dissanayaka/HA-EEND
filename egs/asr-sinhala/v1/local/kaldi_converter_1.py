@@ -94,7 +94,7 @@ class CorpusConverter(object):
     for session_id in spk_utt:
       for utt_id in spk_utt[session_id]:
         _, basename = utt_id.split('-')
-        path = os.path.join(self.corpus.corpus_dir, 'data', basename[:2],
+        path = os.path.join(self.corpus.corpus_dir, basename[:2],
                             '%s.flac' % basename)
         stdout.write('%s flac -cds %s |\n' % (utt_id, path))
 

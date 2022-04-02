@@ -41,7 +41,7 @@ mkdir -p data/sinhala_asr_train
 full_file=data/local/utt_spk_text.tsv
 
 echo "Preparing sinhala asr data, this may take a while"
-local/kaldi_converter_1.py -d $CORPUSDIR -f $full_file --alsent > data/sinhala_asr_train/al_sent.txt
+# local/kaldi_converter_1.py -d $CORPUSDIR -f $full_file --alsent > data/sinhala_asr_train/al_sent.txt
 local/kaldi_converter_1.py -d $CORPUSDIR -f $full_file --spk2utt    | sort -k1,1 > data/sinhala_asr_train/spk2utt
 local/kaldi_converter_1.py -d $CORPUSDIR -f $full_file --spk2gender | sort -k1,1 > data/sinhala_asr_train/spk2gender
 # local/kaldi_converter_1.py -d $CORPUSDIR -f $full_file --text       | sort -k1,1 > data/sinhala_asr_train/text
