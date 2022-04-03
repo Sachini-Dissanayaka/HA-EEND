@@ -9,14 +9,10 @@ def write_output(filename, content):
     f.close()
 
 def read_output(filename):
-    # filename = "data_simu_wav_real_mix_01.h5"
-
     with h5py.File(filename, "r") as f:
-        # List all groups
         keys = list(f.keys())
         a_group_key = list(f.keys())[0]
 
-        # Get the data
         data = list(f[a_group_key])
 
     speaker1 = []
