@@ -1,5 +1,5 @@
-# egs/**/data/
-# egs/**/exp/
+egs/**/data/
+egs/**/exp/
 egs/librispeech/v1/sim_rir_8k.zip
 egs/callhome/v1/sim_rir_8k.zip
 egs/callhome/v1/wav
@@ -42,3 +42,4 @@ MANIFEST
 
 # PyInstaller
 #  Usually these files are written by a python script fr
+api/node_modules
