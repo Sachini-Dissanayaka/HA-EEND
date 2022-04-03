@@ -1,9 +1,12 @@
 const express = require("express");
 const fileUpload = require("express-fileupload");
+const cors = require("cors");
 const { uploadAndSaveFile, updateWavScp } = require("./services/file-upload-service");
 const { runModel, readResults } = require("./services/model-service");
 
 const app = express();
+
+app.use(cors());
 
 app.use(fileUpload());
 
@@ -22,8 +25,8 @@ app.post('/ha-eend', async (req, res) => {
         await uploadAndSaveFile(file);
         await updateWavScp(file);
         await runModel();
-        await readResults(file);
-        return res.status(200).send('Success!');
+        const data = await readResults(file);
+        return res.status(200).json(data);
     } catch (err) {
         return res.status(500).send('Something went wrong! ' + err);
     }
