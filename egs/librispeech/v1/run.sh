@@ -4,8 +4,8 @@ ulimit -S -n 4096
 
 export PYTHONPATH=`pwd`:$PYTHONPATH
 
-exp_dir=exp/diarize
-conf_dir=conf
+exp_dir=/home/sachini/HA-EEND/egs/librispeech/v1/exp/diarize
+conf_dir=/home/sachini/HA-EEND/egs/librispeech/v1/conf
 
 model_dir=$exp_dir/model
 
@@ -36,7 +36,7 @@ model_dir=$exp_dir/model
 
 #--------------------Demo - paths-------------------------------
 infer_conf=$conf_dir/infer.yaml
-test_dir=data/simu/data/real
+test_dir=/home/sachini/HA-EEND/egs/librispeech/v1/data/simu/data/real
 test_model=$model_dir/avg.th
 infer_out_dir=$exp_dir/infer/real
 
