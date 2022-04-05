@@ -83,8 +83,16 @@ Modify ```egs/librispeech/v1/cmd.sh``` according to your job schedular.
 
 ## Data Preparation
 
-Download the Librispeech dataset from https://www.openslr.org/12 <br>
-Move the file into a folder with path egs/librispeech/v1/data/local <br>
+The following datasets were used in the experiments.
+- Training
+    - [Librispeech dataset](https://www.openslr.org/12)
+    - [Sinhala ASR dataset](https://openslr.org/52/)
+- Testing
+    - [CALLHOME dataset](https://catalog.ldc.upenn.edu/LDC2001S97)
+    - CALLSINHALA dataset (collected by the authors)
+
+For tests with English data:
+Move the datasets (Librispeech and CALLHOME) into a folder with path egs/librispeech/v1/data/local <br>
 Run the following commands
 ```
 cd egs/librispeech/v1
