@@ -85,14 +85,14 @@ Modify ```egs/librispeech/v1/cmd.sh``` according to your job schedular.
 
 The following datasets were used in the experiments.
 - Training
-    - [Librispeech dataset](https://www.openslr.org/12)
-    - [Sinhala ASR dataset](https://openslr.org/52/)
+    - [LibriSpeech ASR corpus](https://www.openslr.org/12)
+    - [Sinhala ASR corpus](https://openslr.org/52/)
 - Testing
-    - [CALLHOME dataset](https://catalog.ldc.upenn.edu/LDC2001S97)
+    - [CALLHOME portion](https://catalog.ldc.upenn.edu/LDC2001S97) of the 2000 NIST Speaker Recognition Evaluation Corpus
     - CALLSINHALA dataset (collected by the authors)
 
 For tests with English data:
-Move the datasets (Librispeech and CALLHOME) into a folder with path egs/librispeech/v1/data/local <br>
+Move the datasets (LibriSpeech and CALLHOME) into a folder with path egs/librispeech/v1/data/local <br>
 Run the following commands
 ```
 cd egs/librispeech/v1
