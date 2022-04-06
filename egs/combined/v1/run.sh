@@ -31,8 +31,8 @@ infer_out_dir_cs=$exp_dir/infer/callsinhala
 infer_out_dir_ch=$exp_dir/infer/callhome
 
 test_model=$model_dir/avg.th
-test_model_cs=$model_adapt_dir/avg.th
-test_model_ch=$model_adapt_dir/avg.th
+test_model_cs=$model_adapt_dir_cs/avg.th
+test_model_ch=$model_adapt_dir_ch/avg.th
 
 work=$infer_out_dir/sinhala-asr/.work
 work_cs=$infer_out_dir/callsinhala/.work
