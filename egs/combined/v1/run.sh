@@ -64,20 +64,20 @@ if [ $stage -le 3 ]; then
 fi
 
 # Model averaging 
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
     echo "Start model averaging"
     ifiles=`eval echo $model_adapt_dir_cs/transformer{91..100}.th`
     python ~/HA-EEND/eend/bin/model_averaging.py $test_model_cs $ifiles
 fi
 
 # Adapting CALLHOME
-if [ $stage -le 3 ]; then
+if [ $stage -le 5 ]; then
     echo "Start adapting"
     python ~/HA-EEND/eend/bin/train.py -c $adapt_conf $train_adapt_dir_ch $dev_adapt_dir_ch $model_adapt_dir_ch --initmodel $init_model
 fi
 
 # Model averaging 
-if [ $stage -le 3 ]; then
+if [ $stage -le 6 ]; then
     echo "Start model averaging"
     ifiles=`eval echo $model_adapt_dir_ch/transformer{91..100}.th`
     python ~/HA-EEND/eend/bin/model_averaging.py $test_model_ch $ifiles
@@ -86,13 +86,13 @@ fi
 # --- CALLSINHALA
 
 # Inferring
-if [ $stage -le 6 ]; then
+if [ $stage -le 7 ]; then
     echo "Start inferring"
     python ~/HA-EEND/eend/bin/infer.py -c $infer_conf $test_dir_cs $test_model_cs $infer_out_dir_cs
 fi
 
 # Scoring
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
     echo "Start scoring"
     mkdir -p $work_cs
     mkdir -p $scoring_dir_cs
@@ -109,20 +109,20 @@ if [ $stage -le 7 ]; then
 	done
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
     best_score.sh $scoring_dir_cs
 fi
 
 # --- CALLHOME
 
 # Inferring
-if [ $stage -le 6 ]; then
+if [ $stage -le 10 ]; then
     echo "Start inferring"
     python ~/HA-EEND/eend/bin/infer.py -c $infer_conf $test_dir_ch $test_model_ch $infer_out_dir_ch
 fi
 
 # Scoring
-if [ $stage -le 7 ]; then
+if [ $stage -le 11 ]; then
     echo "Start scoring"
     mkdir -p $work_ch
     mkdir -p $scoring_dir_ch
@@ -139,7 +139,7 @@ if [ $stage -le 7 ]; then
 	done
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 12 ]; then
     best_score.sh $scoring_dir_ch
 fi
 
