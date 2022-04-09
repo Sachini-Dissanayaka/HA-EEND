@@ -12,6 +12,25 @@ The repository largely references code from the following sources:
 - [multihead-LDSA](https://github.com/mlxu995/multihead-LDSA)
 - [ASR Recipes](https://github.com/google/asr-recipes) licensed under an [Apache License, Version 2.0.](https://github.com/google/asr-recipes/blob/master/LICENSE)
 
+## Directory Structure
+
+```
+├── egs : middle tier files                   
+    ├── asr-sinhala/v1 : Modelling on Sinhala ASR and CALLSINHALA
+        ├── conf : configuration files
+        ├── local : locally used scripts and other files
+        ├── cmd.sh : file that specifies job scheduling system
+        ├── path.sh : path file
+        ├── run.sh : train/infer/score model
+        └── run_prepare_shared.sh : prepare data
+    ├── callhome/v1 : CALLHOME test set
+    ├── combined/v1 : Combined modelling on Sinhala ASR/LibriSpeech and test on CALLHOME
+    └── librispeech/v1 : Modelling on LibriSpeech and CALLHOME
+├── eend : backend files  
+    └── pytorch_backend/models.py : specify different models to be trained on
+└── tools : Kaldi setup       
+```
+
 ## Installing requirements and Setting-up
 
 The research was conducted in the following environment <br>
