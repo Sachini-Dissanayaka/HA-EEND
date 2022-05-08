@@ -3,7 +3,7 @@
 
 This repository comprises source code for two main research objectives
 1. Combining various attention mechanisms to obtain a better model for two-speaker overlapping speech speaker diarization than the current state-of-the-art approaches.
-2. Experiments on the language dependency of the domain of speaker diarization, and testing on datasets in both English and Sinhala languages
+2. Experiments on the language dependency of EEND-based speaker diarization, and testing on combined datasets in both English and Sinhala languages
 
 The repository largely references code from the following sources: 
 - [EEND](https://github.com/hitachi-speech/EEND) by [Research & Development Group, Hitachi, Ltd.](https://github.com/hitachi-speech) who holds the copyright
