@@ -1,5 +1,4 @@
-<h1 align="center">Hybrid Attention End-to-End Neural Diarization</h1>
-<h3 align="center">HA-EEND</h3>
+<h1 align="center">Attention-based End-to-End Neural Diarization</h1>
 
 This repository comprises source code for two main research objectives
 1. Combining various attention mechanisms to obtain a better model for two-speaker overlapping speech speaker diarization than the current state-of-the-art approaches. <br>
@@ -14,6 +13,7 @@ The repository largely references code from the following sources:
 - [EEND_PyTorch](https://github.com/Xflick/EEND_PyTorch) licensed under [MIT License](https://github.com/Xflick/EEND_PyTorch/blob/master/LICENSE)
 - [External-Attention-pytorch](https://github.com/xmu-xiaoma666/External-Attention-pytorch) licensed under [MIT License](https://github.com/xmu-xiaoma666/External-Attention-pytorch/blob/master/LICENSE)
 - [multihead-LDSA](https://github.com/mlxu995/multihead-LDSA)
+- [attentions](https://github.com/sooftware/attentions) licensed under [MIT License](https://github.com/sooftware/attentions/blob/master/LICENSE)
 - [ASR Recipes](https://github.com/google/asr-recipes) licensed under an [Apache License, Version 2.0.](https://github.com/google/asr-recipes/blob/master/LICENSE)
 
 ## Directory Structure
