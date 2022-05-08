@@ -2,7 +2,11 @@
 <h3 align="center">HA-EEND</h3>
 
 This repository comprises source code for two main research objectives
-1. Combining various attention mechanisms to obtain a better model for two-speaker overlapping speech speaker diarization than the current state-of-the-art approaches.
+1. Combining various attention mechanisms to obtain a better model for two-speaker overlapping speech speaker diarization than the current state-of-the-art approaches. <br>
+The following combined attention mechanisms have been employed in the work. Combined as well as single attention mechanisms can be obtained by commenting the respective lines of code from ``` pytorch_backend/models.py  ```
+-  Self Attention + Local Dense Synthesizer Attention (HA-EEND)
+-  External Attention + Local Dense Synthesizer Attention
+-  Relative Attention + Local Dense Synthesizer Attention
 2. Experiments on the language dependency of EEND-based speaker diarization, and testing on combined datasets in both English and Sinhala languages
 
 The repository largely references code from the following sources: 
